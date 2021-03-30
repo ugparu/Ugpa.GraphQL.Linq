@@ -75,6 +75,43 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void SingleIncludeQueryTest()
+        {
+            var query = new GqlQueryable<Product>(provider, "products")
+                .Include(_ => _.ProductInfo);
+
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { products { id name comment productInfo { title version } } }", queryText);
+        }
+
+        [Fact]
+        public void NestedIncludeQueryTest()
+        {
+            var query = new GqlQueryable<Product>(provider, "products")
+                .Include(_ => _.ProductInfo.About);
+
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { products { id name comment productInfo { about { stamp } } } }", queryText);
+        }
+
+        [Fact]
+        public void MultipleIncludesQueryTest()
+        {
+            var query = new GqlQueryable<Product>(provider, "products")
+                .Include(_ => _.ProductInfo)
+                .Include(_ => _.ProductInfo.About);
+
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { products { id name comment productInfo { title version about { stamp } } } }", queryText);
+        }
+
+        [Fact]
         public void SimpleParametrizedQueryTest()
         {
             var query = new GqlQueryable<DrawSchema>(provider, "schemas")

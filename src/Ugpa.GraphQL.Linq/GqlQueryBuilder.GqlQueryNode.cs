@@ -39,6 +39,27 @@ namespace Ugpa.GraphQL.Linq
                 return new GqlQueryNode(field.Name, graphType, field.Arguments, variablesResolver, variableValuesSource);
             }
 
+            public void Prune()
+            {
+                foreach (var group in Children.GroupBy(_ => _.name).Where(_ => _.Count() > 1))
+                {
+                    var main = group.First();
+                    foreach (var other in group.Skip(1))
+                    {
+                        if (main.GraphType != other.GraphType)
+                            throw new System.InvalidOperationException();
+
+                        foreach (var child in other.Children)
+                            main.Children.Add(child);
+
+                        Children.Remove(other);
+                    }
+                }
+
+                foreach (var child in Children)
+                    child.Prune();
+            }
+
             public string ToQueryString()
             {
                 var subBuilder = new StringBuilder();
@@ -62,7 +83,21 @@ namespace Ugpa.GraphQL.Linq
             }
 
             public override string ToString()
-                => ToQueryString();
+            {
+                var builder = new StringBuilder(name);
+
+                if (arguments.Any())
+                    builder.Append($"({string.Join(", ", arguments.Select(_ => _.Name))})");
+
+                if (Children.Any())
+                {
+                    builder.Append(" {");
+                    builder.Append(string.Join(" ", Children.Select(_ => _.name)));
+                    builder.Append(" }");
+                }
+
+                return builder.ToString();
+            }
 
             private void ToQueryString(StringBuilder queryBuilder, string indent, IEnumerable<string> exclude)
             {

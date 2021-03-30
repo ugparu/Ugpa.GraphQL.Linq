@@ -19,10 +19,13 @@ namespace Ugpa.GraphQL.Linq
         private static readonly Lazy<MethodInfo> whereParams = new Lazy<MethodInfo>(()
             => ((Func<IQueryable<int>, int, IQueryable<int>>)QueryableExtensions.Where).Method.GetGenericMethodDefinition());
 
+        private static readonly Lazy<MethodInfo> include = new Lazy<MethodInfo>(()
+            => ((Func<IQueryable<int>, Expression<Func<int, int>>, IQueryable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
 
         public static string BuildQuery(Expression expression, VariablesResolver variablesResolver)
         {
             var (root, _) = GetQueryNode(expression, null, true, variablesResolver, null);
+            root.Prune();
             var query = root.ToQueryString();
             return query;
         }
@@ -81,15 +84,23 @@ namespace Ugpa.GraphQL.Linq
         {
             if (methodCall.Method.IsGenericMethod)
             {
-                if (methodCall.Method.GetGenericMethodDefinition() == select.Value ||
-                    methodCall.Method.GetGenericMethodDefinition() == selectMany.Value)
+                var methodDefinition = methodCall.Method.GetGenericMethodDefinition();
+
+                if (methodDefinition == select.Value || methodDefinition == selectMany.Value)
                 {
                     var node = GetQueryNode(methodCall.Arguments[0], owner, false, variablesResolver, variablesSource);
                     var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.head.GraphType, includeScalar, variablesResolver, variablesSource);
                     node.head.Children.Add(subNode.root);
                     return (node.root, subNode.head);
                 }
-                else if (methodCall.Method.GetGenericMethodDefinition() == whereParams.Value)
+                else if (methodDefinition == include.Value)
+                {
+                    var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesResolver, variablesSource);
+                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.root.GraphType, includeScalar, variablesResolver, variablesSource);
+                    node.root.Children.Add(subNode.root);
+                    return (node.root, subNode.head);
+                }
+                else if (methodDefinition == whereParams.Value)
                 {
                     var innerVariablesSource = ((ConstantExpression)methodCall.Arguments[1]).Value;
                     var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesResolver, innerVariablesSource);
