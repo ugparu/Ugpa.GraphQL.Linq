@@ -138,7 +138,12 @@ namespace Ugpa.GraphQL.Linq
                 ?? (field.ResolvedType as IProvideResolvedType)?.ResolvedType as IComplexGraphType
                 ?? throw new NotImplementedException();
 
-            var node = new GqlQueryNode(field, variablesResolver, variablesSource);
+            return GetQueryNodeForComplexType(field.Name, complexGraphType, field.Arguments, includeScalarFields, variablesResolver, variablesSource);
+        }
+
+        private static GqlQueryNode GetQueryNodeForComplexType(string name, IComplexGraphType complexGraphType, IEnumerable<QueryArgument> arguments, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
+        {
+            var node = new GqlQueryNode(name, complexGraphType, arguments, variablesResolver, variablesSource);
 
             if (includeScalarFields)
             {
@@ -147,7 +152,21 @@ namespace Ugpa.GraphQL.Linq
                     _.ResolvedType is NonNullGraphType nn && nn.ResolvedType is ScalarGraphType);
 
                 foreach (var childField in scalarFields)
-                    node.Children.Add(new GqlQueryNode(childField, variablesResolver, variablesSource));
+                    node.Children.Add(GqlQueryNode.FromField(childField, variablesResolver, variablesSource));
+            }
+
+            if (complexGraphType is IAbstractGraphType abstractGraphType)
+            {
+                foreach (var posibleType in abstractGraphType.PossibleTypes)
+                {
+                    node.PosibleTypes.Add(GetQueryNodeForComplexType(
+                        string.Empty,
+                        posibleType,
+                        Enumerable.Empty<QueryArgument>(),
+                        includeScalarFields,
+                        variablesResolver,
+                        variablesSource));
+                }
             }
 
             return node;
@@ -159,9 +178,9 @@ namespace Ugpa.GraphQL.Linq
                 _.GetType() is var t &&
                 t.IsGenericType &&
                 t.GenericTypeArguments.Length == 1 &&
-                t.GenericTypeArguments[0] == clrType);
-
-            gType ??= schema.AllTypes.FirstOrDefault(_ => _.Name == $"{clrType.Name}Type");
+                t.GenericTypeArguments[0] == clrType)
+                ?? schema.AllTypes.FirstOrDefault(_ => _.Name == $"{clrType.Name}Type")
+                ?? schema.AllTypes.FirstOrDefault(_ => _.Name == $"{clrType.Name}Interface");
 
             return gType ?? throw new InvalidOperationException();
         }

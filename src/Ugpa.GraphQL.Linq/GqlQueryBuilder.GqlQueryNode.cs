@@ -9,29 +9,40 @@ namespace Ugpa.GraphQL.Linq
     {
         private class GqlQueryNode
         {
-            private readonly FieldType field;
+            private readonly string name;
+            private readonly IEnumerable<QueryArgument> arguments;
             private readonly VariablesResolver variablesResolver;
             private readonly object variableValuesSource;
 
-            public GqlQueryNode(FieldType field, VariablesResolver variablesResolver, object variableValuesSource)
+            public GqlQueryNode(string name, IGraphType graphType, IEnumerable<QueryArgument> arguments, VariablesResolver variablesResolver, object variableValuesSource)
             {
-                this.field = field;
+                this.name = name;
+                this.arguments = arguments;
                 this.variablesResolver = variablesResolver;
                 this.variableValuesSource = variableValuesSource;
+
+                GraphType = graphType;
             }
 
-            public string Name => field.Name;
-
-            public IGraphType GraphType => field.ResolvedType is IProvideResolvedType provideResolvedType ? provideResolvedType.ResolvedType : field.ResolvedType;
-
-            public IEnumerable<QueryArgument> Arguments => field.Arguments;
+            public IGraphType GraphType { get; }
 
             public ICollection<GqlQueryNode> Children { get; } = new List<GqlQueryNode>();
+
+            public ICollection<GqlQueryNode> PosibleTypes { get; } = new List<GqlQueryNode>();
+
+            public static GqlQueryNode FromField(FieldType field, VariablesResolver variablesResolver, object variableValuesSource)
+            {
+                var graphType = field.ResolvedType is IProvideResolvedType provideResolvedType
+                    ? provideResolvedType.ResolvedType
+                    : field.ResolvedType;
+
+                return new GqlQueryNode(field.Name, graphType, field.Arguments, variablesResolver, variableValuesSource);
+            }
 
             public string ToQueryString()
             {
                 var subBuilder = new StringBuilder();
-                ToQueryString(subBuilder, string.Empty);
+                ToQueryString(subBuilder, string.Empty, Enumerable.Empty<string>());
 
                 var builder = new StringBuilder();
                 builder.Append("query");
@@ -53,16 +64,16 @@ namespace Ugpa.GraphQL.Linq
             public override string ToString()
                 => ToQueryString();
 
-            private void ToQueryString(StringBuilder queryBuilder, string indent)
+            private void ToQueryString(StringBuilder queryBuilder, string indent, IEnumerable<string> exclude)
             {
                 indent += "  ";
-                queryBuilder.Append($"{indent}{Name}");
+                queryBuilder.Append($"{indent}{name}");
 
-                if (Arguments.Any())
+                if (arguments.Any())
                 {
                     queryBuilder.Append("(");
 
-                    var args = Arguments
+                    var args = arguments
                         .Select(argument =>
                         {
                             var varName = variablesResolver.GetArgumentVariableName(argument, variableValuesSource);
@@ -77,12 +88,24 @@ namespace Ugpa.GraphQL.Linq
 
                 queryBuilder.AppendLine(" {");
 
-                foreach (var child in Children)
+                if (GraphType is IAbstractGraphType)
+                    queryBuilder.AppendLine($"{indent}  __typename");
+
+                foreach (var child in Children.Where(_ => !exclude.Contains(_.name)))
                 {
                     if (child.Children.Any())
-                        child.ToQueryString(queryBuilder, indent);
+                        child.ToQueryString(queryBuilder, indent, Enumerable.Empty<string>());
                     else
-                        queryBuilder.AppendLine($"{indent}  {child.Name}");
+                        queryBuilder.AppendLine($"{indent}  {child.name}");
+                }
+
+                if (GraphType is IAbstractGraphType)
+                {
+                    foreach (var child in PosibleTypes)
+                    {
+                        queryBuilder.Append($"{indent}... on {child.GraphType.Name}");
+                        child.ToQueryString(queryBuilder, indent, Children.Select(_ => _.name));
+                    }
                 }
 
                 queryBuilder.AppendLine($"{indent}}}");

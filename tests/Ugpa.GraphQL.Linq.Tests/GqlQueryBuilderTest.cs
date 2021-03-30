@@ -74,7 +74,6 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.Equal("query { products { schemas { id name } } }", queryText);
         }
 
-
         [Fact]
         public void SimpleParametrizedQueryTest()
         {
@@ -83,7 +82,6 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var variablesResolver = new VariablesResolver();
             var queryText = GqlQueryBuilder.BuildQuery(query.Expression, variablesResolver);
-
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query($linq_param_0: Int!) { schemas(productId: $linq_param_0) { id name } }", queryText);
@@ -91,6 +89,19 @@ namespace Ugpa.GraphQL.Linq.Tests
             var variable = Assert.Single(variablesResolver.GetAllVariables());
             Assert.Equal("linq_param_0", variable.name);
             Assert.Equal(111, variable.value);
+        }
+
+        [Fact]
+        public void InterfaceImplementationQueryTest()
+        {
+            var query = new GqlQueryable<TypeTemplate>(provider, "templates");
+
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { templates { __typename id name ... on TextTemplateType { fontFamily fontSize } ... on RailchainTemplateType { mainLineWidth sideLineWidth } } }",
+                queryText);
         }
 
         private string PostProcessQuery(string query)
@@ -123,6 +134,10 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private sealed class DrawSchema
         {
+        }
+
+        private class TypeTemplate
+        { 
         }
     }
 }
