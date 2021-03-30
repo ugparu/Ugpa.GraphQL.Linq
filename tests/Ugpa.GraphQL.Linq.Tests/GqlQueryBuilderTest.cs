@@ -129,6 +129,24 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void ParametrizedSelectQueryTest()
+        {
+            var query = new GqlQueryable<Product>(provider, "product")
+                .Where(new { productId = 111 })
+                .Select(_ => _.ProductInfo);
+
+            var variablesResolver = new VariablesResolver();
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, variablesResolver);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query($linq_param_0: Int!) { product(productId: $linq_param_0) { productInfo { title version } } }", queryText);
+
+            var variable = Assert.Single(variablesResolver.GetAllVariables());
+            Assert.Equal("linq_param_0", variable.name);
+            Assert.Equal(111, variable.value);
+        }
+
+        [Fact]
         public void InterfaceImplementationQueryTest()
         {
             var query = new GqlQueryable<TypeTemplate>(provider, "templates");

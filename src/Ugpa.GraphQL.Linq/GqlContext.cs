@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,45 +32,7 @@ namespace Ugpa.GraphQL.Linq
 
         private Schema InitSchema()
         {
-            var q = @"{
-  __schema {
-    queryType {
-      name
-      kind
-    }
-    types {
-      name
-      kind
-      fields {
-        name
-        type {
-          name
-          kind
-          ofType {
-            name
-            kind
-          }
-        }
-        args {
-          name
-          type {
-            name
-            kind
-          }
-        }
-      }
-      enumValues {
-        name
-      }
-      interfaces {
-        name
-      }
-    }
-  }
-}";
-
-
-            var request = new global::GraphQL.GraphQLRequest { Query = q };
+            var request = new global::GraphQL.GraphQLRequest { Query = GetIntrospectionQuery() };
 
             var result = Task.Run(async () => await gqlClient.Value.SendQueryAsync<JObject>(request, CancellationToken.None)).Result.Data;
 
@@ -97,6 +60,17 @@ namespace Ugpa.GraphQL.Linq
             return newSchema;
         }
 
+        private string GetIntrospectionQuery()
+        {
+            using var introspectionQueryStream = typeof(GqlContext).Assembly
+                .GetManifestResourceStream(typeof(GqlContext), "Resources.IntrospectionQuery.gql")
+                ?? throw new InvalidOperationException();
+
+            using var introspectionQueryReader = new StreamReader(introspectionQueryStream);
+
+            return introspectionQueryReader.ReadToEnd();
+        }
+
         private IGraphType ResolveGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
         {
             var typeName = (string)((JValue)type["name"]).Value;
@@ -115,6 +89,7 @@ namespace Ugpa.GraphQL.Linq
                 "LIST" => ResolveListGraphType(findType, types, type, graphTypeCache),
                 "SCALAR" => ResolveScalarGraphType(findType, types, type, graphTypeCache),
                 "INTERFACE" => ResolveInterfaceGraphType(findType, types, type, graphTypeCache),
+                "INPUT_OBJECT" => ResolveInputObjectGraphType(findType, types, type, graphTypeCache),
                 _ => throw new NotImplementedException()
             };
         }
@@ -194,6 +169,25 @@ namespace Ugpa.GraphQL.Linq
             }
 
             gType.ResolveType = _ => throw new NotSupportedException();
+
+            return gType;
+        }
+
+        private IInputObjectGraphType ResolveInputObjectGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        {
+            var typeName = (string)((JValue)type["name"]).Value;
+            var gType = new InputObjectGraphType { Name = typeName };
+            graphTypeCache[typeName] = gType;
+
+            foreach (var field in ((JArray)type["inputFields"]).Cast<JObject>())
+            {
+                var fieldType = (JObject)field["type"] ?? throw new InvalidOperationException();
+                gType.AddField(new FieldType
+                {
+                    Name = (string)((JValue)field["name"]).Value,
+                    ResolvedType = ResolveGraphType(findType, types, fieldType, graphTypeCache)
+                });
+            }
 
             return gType;
         }

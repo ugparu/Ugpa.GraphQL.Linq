@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -82,12 +83,26 @@ namespace Ugpa.GraphQL.Linq
                         {
                             var type = ((IQueryable)qq).ElementType;
                             var listType = typeof(List<>).MakeGenericType(type);
-                            var obj = data[qq.QueryName].ToObject(listType);
+                            object list;
+                            if (data[qq.QueryName] is JArray jArray)
+                            {
+                                list = jArray.ToObject(listType);
+                            }
+                            else if (data[qq.QueryName] is JObject jObject)
+                            {
+                                var obj =  jObject.ToObject(type);
+                                list = Activator.CreateInstance(listType);
+                                ((IList)list).Add(obj);
+                            }
+                            else
+                            {
+                                throw new NotImplementedException();
+                            }
 
                             var newQuery = ((Func<IEnumerable<int>, IQueryable<int>>)Queryable.AsQueryable).Method
                                 .GetGenericMethodDefinition()
                                 .MakeGenericMethod(type)
-                                .Invoke(null, new[] { obj });
+                                .Invoke(null, new[] { list });
 
                             return Expression.Constant(newQuery);
                         }

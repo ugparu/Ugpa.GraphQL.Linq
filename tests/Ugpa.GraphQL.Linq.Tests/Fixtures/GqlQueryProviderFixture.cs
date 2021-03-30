@@ -44,6 +44,7 @@ namespace Ugpa.GraphQL.Linq.Tests.Fixtures
                 }
                 type Query {
                     products: [ProductType]
+                    product(productId: Int!): ProductType!
                     schemas(productId: Int!): [DrawSchemaType]
                     templates: [TypeTemplateInterface]
                 }

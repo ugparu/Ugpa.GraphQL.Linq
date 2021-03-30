@@ -103,7 +103,7 @@ namespace Ugpa.GraphQL.Linq
                 else if (methodDefinition == whereParams.Value)
                 {
                     var innerVariablesSource = ((ConstantExpression)methodCall.Arguments[1]).Value;
-                    var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesResolver, innerVariablesSource);
+                    var node = GetQueryNode(methodCall.Arguments[0], owner, includeScalar, variablesResolver, innerVariablesSource);
                     return node;
                 }
                 else
@@ -190,6 +190,7 @@ namespace Ugpa.GraphQL.Linq
                 t.IsGenericType &&
                 t.GenericTypeArguments.Length == 1 &&
                 t.GenericTypeArguments[0] == clrType)
+                ?? schema.AllTypes.FirstOrDefault(_ => _.Name == clrType.Name)
                 ?? schema.AllTypes.FirstOrDefault(_ => _.Name == $"{clrType.Name}Type")
                 ?? schema.AllTypes.FirstOrDefault(_ => _.Name == $"{clrType.Name}Interface");
 
