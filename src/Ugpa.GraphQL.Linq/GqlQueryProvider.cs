@@ -46,8 +46,13 @@ namespace Ugpa.GraphQL.Linq
 
         public TResult Execute<TResult>(Expression expression)
         {
-            var query = GqlQueryBuilder.BuildQuery(expression);
-            var request = new GraphQLRequest { Query = query };
+            var variablesResolver = new VariablesResolver();
+            var query = GqlQueryBuilder.BuildQuery(expression, variablesResolver);
+            var request = new GraphQLRequest
+            {
+                Query = query,
+                Variables = variablesResolver.GetAllVariables().ToDictionary(_ => _.name, _ => _.value)
+            };
 
             var result = Task.Run(() => client.SendQueryAsync<JToken>(request, CancellationToken.None)).Result;
 
@@ -88,7 +93,7 @@ namespace Ugpa.GraphQL.Linq
                         }
                         else
                         {
-                            throw new NotImplementedException();
+                            return expression;
                         }
                     }
                 case UnaryExpression unary:

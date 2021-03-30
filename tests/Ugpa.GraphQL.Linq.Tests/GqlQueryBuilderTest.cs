@@ -19,7 +19,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         {
             var query = new GqlQueryable<Product>(provider, "products");
 
-            var queryText = GqlQueryBuilder.BuildQuery(query.Expression);
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query { products { id name comment } }", queryText);
@@ -31,7 +31,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<Product>(provider, "products")
                 .Select(_ => _.ProductInfo);
 
-            var queryText = GqlQueryBuilder.BuildQuery(query.Expression);
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query { products { productInfo { title version } } }", queryText);
@@ -43,7 +43,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<Product>(provider, "products")
                 .Select(_ => _.ProductInfo.About);
 
-            var queryText = GqlQueryBuilder.BuildQuery(query.Expression);
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query { products { productInfo { about { stamp } } } }", queryText);
@@ -56,7 +56,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 .Select(_ => _.ProductInfo)
                 .Select(_ => _.About);
 
-            var queryText = GqlQueryBuilder.BuildQuery(query.Expression);
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query { products { productInfo { about { stamp } } } }", queryText);
@@ -68,7 +68,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<Product>(provider, "products")
                 .SelectMany(_ => _.Schemas);
 
-            var queryText = GqlQueryBuilder.BuildQuery(query.Expression);
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, new VariablesResolver());
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query { products { schemas { id name } } }", queryText);
@@ -81,10 +81,16 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<DrawSchema>(provider, "schemas")
                 .Where(new { productId = 111 });
 
-            var queryText = GqlQueryBuilder.BuildQuery(query.Expression);
+            var variablesResolver = new VariablesResolver();
+            var queryText = GqlQueryBuilder.BuildQuery(query.Expression, variablesResolver);
+
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query($linq_param_0: Int!) { schemas(productId: $linq_param_0) { id name } }", queryText);
+
+            var variable = Assert.Single(variablesResolver.GetAllVariables());
+            Assert.Equal("linq_param_0", variable.name);
+            Assert.Equal(111, variable.value);
         }
 
         private string PostProcessQuery(string query)

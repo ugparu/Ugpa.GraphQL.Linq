@@ -39,9 +39,7 @@ namespace Ugpa.GraphQL.Linq
         public IQueryProvider Provider { get; }
 
         public IEnumerator<T> GetEnumerator()
-        {
-            return Provider.Execute<IEnumerable<T>>(Expression).GetEnumerator();
-        }
+            => Provider.Execute<IEnumerable<T>>(Expression).GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator()
             => GetEnumerator();

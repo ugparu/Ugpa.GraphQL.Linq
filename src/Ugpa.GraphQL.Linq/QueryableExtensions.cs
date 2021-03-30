@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -13,5 +14,8 @@ namespace Ugpa.GraphQL.Linq
                 ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(T), typeof(TParams)),
                 new Expression[] { source.Expression, Expression.Constant(@params) }));
         }
+
+        public static IEnumerable<T> Where<T, TParams>(this IEnumerable<T> source, TParams @params)
+            => source;
     }
 }

@@ -50,12 +50,18 @@ namespace Ugpa.GraphQL.Linq
             kind
           }
         }
+        args {
+          name
+          type {
+            name
+            kind
+          }
+        }
       }
       enumValues {
         name
       }
       interfaces {
-        kind
         name
       }
     }
@@ -147,10 +153,19 @@ namespace Ugpa.GraphQL.Linq
             foreach (var field in ((JArray)type["fields"]).Cast<JObject>())
             {
                 var fieldType = (JObject)field["type"] ?? throw new InvalidOperationException();
+                var fieldArgs = (JArray)field["args"] ?? throw new NotImplementedException();
+                var queryArgs = fieldArgs
+                    .Select(_ => new QueryArgument(ResolveGraphType(findType, types, (JObject)_["type"], graphTypeCache))
+                    {
+                        Name = (string)((JValue)_["name"]).Value
+                    })
+                    .ToArray();
+
                 gType.AddField(new FieldType
                 {
                     Name = (string)((JValue)field["name"]).Value,
-                    ResolvedType = ResolveGraphType(findType, types, fieldType, graphTypeCache)
+                    ResolvedType = ResolveGraphType(findType, types, fieldType, graphTypeCache),
+                    Arguments = new QueryArguments(queryArgs)
                 });
             }
 
