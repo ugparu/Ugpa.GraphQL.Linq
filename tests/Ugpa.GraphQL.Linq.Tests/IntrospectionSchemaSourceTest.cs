@@ -147,6 +147,89 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.IsAssignableFrom<FloatGraphType>(ll.ResolvedType);
         }
 
+        [Fact]
+        public void InterfaceInplementationResolveTest()
+        {
+            var data = @"
+{ ""__schema"": {
+    ""queryType"": { ""name"": ""QT"" },
+    ""types"": [
+    {
+        ""name"": ""QT"",
+        ""kind"": ""OBJECT"",
+        ""fields"": [
+            { ""name"": ""foo"", ""type"": { ""name"": ""FooInterface"" }, ""args"": [] }
+        ],
+        ""interfaces"": [] },
+    { ""name"": ""FooInterface"", ""kind"": ""INTERFACE"", ""fields"": [] },
+    { ""name"": ""FooImplA"", ""kind"": ""OBJECT"", ""fields"": [], ""interfaces"": [ { ""name"": ""FooInterface"" } ] },
+    { ""name"": ""FooImplB"", ""kind"": ""OBJECT"", ""fields"": [], ""interfaces"": [ { ""name"": ""FooInterface"" } ] }
+    ]
+}}";
+            var source = new IntrospectionSchemaSource(new DummyClient(data));
+            var schema = source.GetSchema();
+
+            var i = Assert.IsAssignableFrom<InterfaceGraphType>(schema.Query.GetField("foo").ResolvedType);
+            Assert.Equal(2, i.PossibleTypes.Count());
+
+            var implA = Assert.IsAssignableFrom<ObjectGraphType>(schema.FindType("FooImplA"));
+            var implB = Assert.IsAssignableFrom<ObjectGraphType>(schema.FindType("FooImplB"));
+
+            Assert.Single(i.PossibleTypes, _ => _ == implA);
+            Assert.Single(i.PossibleTypes, _ => _ == implB);
+
+            Assert.Single(implA.ResolvedInterfaces, _ => _ == i);
+            Assert.Single(implB.ResolvedInterfaces, _ => _ == i);
+        }
+
+        [Fact]
+        public void InputObjectResolveTest()
+        {
+            var data = @"
+{ ""__schema"": {
+    ""queryType"": { ""name"": ""QT"" },
+    ""types"": [
+        {
+            ""name"": ""QT"",
+            ""kind"": ""OBJECT"",
+            ""fields"": [
+                {
+                    ""name"": ""inputField"",
+                    ""type"": { ""name"": ""Int"" },
+                    ""args"": [
+                    { ""name"": ""inputValueA"", ""type"": { ""name"": ""Int"" } },
+                    { ""name"": ""inputValueB"", ""type"": { ""name"": ""InputFoo"" } } ] }
+            ],
+            ""interfaces"": [] },
+        {
+            ""name"": ""InputFoo"",
+            ""kind"": ""INPUT_OBJECT"",
+            ""inputFields"": [
+                { ""name"": ""idField"", ""type"": { ""name"": ""ID"" } },
+                { ""name"": ""intField"", ""type"": { ""name"": ""Int"" } },
+                { ""name"": ""nonNullIntField"", ""type"": { ""name"": null, ""kind"": ""NON_NULL"", ""ofType"": { ""name"": ""Int"" } } }
+            ]
+        },
+        { ""name"": ""ID"", ""kind"": ""SCALAR"" },
+        { ""name"": ""Int"", ""kind"": ""SCALAR"" }
+    ]
+}}";
+
+            var source = new IntrospectionSchemaSource(new DummyClient(data));
+            var schema = source.GetSchema();
+
+            var f = schema.Query.GetField("inputField");
+            Assert.Equal(2, f.Arguments.Count);
+            Assert.IsAssignableFrom<IntGraphType>(f.Arguments.Find("inputValueA").ResolvedType);
+
+            var it = Assert.IsAssignableFrom<InputObjectGraphType>(f.Arguments.Find("inputValueB").ResolvedType);
+            Assert.Equal(3, it.Fields.Count());
+            Assert.IsAssignableFrom<IdGraphType>(it.GetField("idField").ResolvedType);
+            Assert.IsAssignableFrom<IntGraphType>(it.GetField("intField").ResolvedType);
+            var nn = Assert.IsAssignableFrom<NonNullGraphType>(it.GetField("nonNullIntField").ResolvedType);
+            Assert.IsAssignableFrom<IntGraphType>(nn.ResolvedType);
+        }
+
         private sealed class DummyClient : IGraphQLClient
         {
             private readonly JObject data;
