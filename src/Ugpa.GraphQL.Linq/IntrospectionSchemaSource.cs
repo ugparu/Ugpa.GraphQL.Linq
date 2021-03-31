@@ -17,8 +17,13 @@ namespace Ugpa.GraphQL.Linq
         private readonly Lazy<ISchema> schema;
 
         public IntrospectionSchemaSource(string endPoint)
+            : this(new GraphQLHttpClient(endPoint, new NewtonsoftJsonSerializer()))
         {
-            schema = new Lazy<ISchema>(() => InitSchema(new GraphQLHttpClient(endPoint, new NewtonsoftJsonSerializer())));
+        }
+
+        internal IntrospectionSchemaSource(IGraphQLClient client)
+        {
+            schema = new Lazy<ISchema>(() => InitSchema(client));
         }
 
         public ISchema GetSchema()
@@ -49,7 +54,7 @@ namespace Ugpa.GraphQL.Linq
             foreach (var type in cache.Values.Except(commonTypes))
                 newSchema.RegisterType(type);
 
-            _ = newSchema.AllTypes;
+            newSchema.Initialize();
 
             return newSchema;
         }
@@ -81,14 +86,14 @@ namespace Ugpa.GraphQL.Linq
                 "NON_NULL" => ResolveNonNullGraphType(findType, types, type, graphTypeCache),
                 "OBJECT" => ResolveObjectGraphType(findType, types, type, graphTypeCache),
                 "LIST" => ResolveListGraphType(findType, types, type, graphTypeCache),
-                "SCALAR" => ResolveScalarGraphType(findType, types, type, graphTypeCache),
+                "SCALAR" => ResolveScalarGraphType(type),
                 "INTERFACE" => ResolveInterfaceGraphType(findType, types, type, graphTypeCache),
                 "INPUT_OBJECT" => ResolveInputObjectGraphType(findType, types, type, graphTypeCache),
                 _ => throw new NotImplementedException()
             };
         }
 
-        private IGraphType ResolveScalarGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        private ScalarGraphType ResolveScalarGraphType(JObject type)
         {
             return ((JValue)type["name"]).Value switch
             {
@@ -99,24 +104,42 @@ namespace Ugpa.GraphQL.Linq
             };
         }
 
-        private IGraphType ResolveNonNullGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        private NonNullGraphType ResolveNonNullGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+            => ResolveProvideResolvedType(findType, types, type, graphTypeCache, _ => new NonNullGraphType(_));
+
+        private ListGraphType ResolveListGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+            => ResolveProvideResolvedType(findType, types, type, graphTypeCache, _ => new ListGraphType(_));
+
+        private TGraphType ResolveProvideResolvedType<TGraphType>(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache, Func<IGraphType, TGraphType> create)
+            where TGraphType : IProvideResolvedType
         {
             var ofType = (JObject)type["ofType"] ?? throw new InvalidOperationException();
-            var gType = new NonNullGraphType(ResolveGraphType(findType, types, ofType, graphTypeCache));
+            var gType = create(ResolveGraphType(findType, types, ofType, graphTypeCache));
             return gType;
         }
 
-        private IGraphType ResolveListGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        private ObjectGraphType ResolveObjectGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
         {
-            var ofType = (JObject)type["ofType"] ?? throw new InvalidOperationException();
-            var gType = new ListGraphType(ResolveGraphType(findType, types, ofType, graphTypeCache));
+            var gType = ResolveComplexGraphType<ObjectGraphType>(findType, types, type, graphTypeCache);
+
+            foreach (var @interface in ((JArray)type["interfaces"]).Cast<JObject>())
+                gType.AddResolvedInterface((IInterfaceGraphType)ResolveGraphType(findType, types, @interface, graphTypeCache));
+
             return gType;
         }
 
-        private IObjectGraphType ResolveObjectGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        private InterfaceGraphType ResolveInterfaceGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        {
+            var gType = ResolveComplexGraphType<InterfaceGraphType>(findType, types, type, graphTypeCache);
+            gType.ResolveType = _ => throw new NotSupportedException();
+            return gType;
+        }
+
+        private TGraphType ResolveComplexGraphType<TGraphType>(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+            where TGraphType : IComplexGraphType, new()
         {
             var typeName = (string)((JValue)type["name"]).Value;
-            var gType = new ObjectGraphType { Name = typeName };
+            var gType = new TGraphType { Name = typeName };
             graphTypeCache[typeName] = gType;
 
             foreach (var field in ((JArray)type["fields"]).Cast<JObject>())
@@ -138,36 +161,10 @@ namespace Ugpa.GraphQL.Linq
                 });
             }
 
-            foreach (var @interface in ((JArray)type["interfaces"]).Cast<JObject>())
-            {
-                gType.AddResolvedInterface((IInterfaceGraphType)ResolveGraphType(findType, types, @interface, graphTypeCache));
-            }
-
             return gType;
         }
 
-        private IInterfaceGraphType ResolveInterfaceGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
-        {
-            var typeName = (string)((JValue)type["name"]).Value;
-            var gType = new InterfaceGraphType { Name = typeName };
-            graphTypeCache[typeName] = gType;
-
-            foreach (var field in ((JArray)type["fields"]).Cast<JObject>())
-            {
-                var fieldType = (JObject)field["type"] ?? throw new InvalidOperationException();
-                gType.AddField(new FieldType
-                {
-                    Name = (string)((JValue)field["name"]).Value,
-                    ResolvedType = ResolveGraphType(findType, types, fieldType, graphTypeCache)
-                });
-            }
-
-            gType.ResolveType = _ => throw new NotSupportedException();
-
-            return gType;
-        }
-
-        private IInputObjectGraphType ResolveInputObjectGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        private InputObjectGraphType ResolveInputObjectGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
         {
             var typeName = (string)((JValue)type["name"]).Value;
             var gType = new InputObjectGraphType { Name = typeName };
