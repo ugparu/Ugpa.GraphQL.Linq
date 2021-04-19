@@ -13,7 +13,7 @@ namespace Ugpa.GraphQL.Linq.Tests
     public sealed class IntrospectionSchemaSourceTest
     {
         [Fact]
-        public void EmtyQueryTypeTest()
+        public void EmptyQueryTypeTest()
         {
             var data = @"
 { ""__schema"": {
@@ -24,10 +24,7 @@ namespace Ugpa.GraphQL.Linq.Tests
 }}";
 
             var source = new IntrospectionSchemaSource(new DummyClient(data));
-            var schema = source.GetSchema();
-
-            Assert.NotNull(schema.Query);
-            Assert.Equal("QT", schema.Query.Name);
+            Assert.Throws<InvalidOperationException>(() => source.GetSchema());
         }
 
         [Fact]
@@ -148,11 +145,11 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
-        public void InterfaceInplementationResolveTest()
+        public void InterfaceImplementationResolveTest()
         {
             var data = @"
 { ""__schema"": {
-    ""queryType"": { ""name"": ""QT"" },
+    ""queryType"": { ""name"": ""QT"", ""fields"": [ { ""name"": ""foo"", ""type"": { ""name"": ""FooInterface"" } } ] },
     ""types"": [
     {
         ""name"": ""QT"",
@@ -161,9 +158,24 @@ namespace Ugpa.GraphQL.Linq.Tests
             { ""name"": ""foo"", ""type"": { ""name"": ""FooInterface"" }, ""args"": [] }
         ],
         ""interfaces"": [] },
-    { ""name"": ""FooInterface"", ""kind"": ""INTERFACE"", ""fields"": [] },
-    { ""name"": ""FooImplA"", ""kind"": ""OBJECT"", ""fields"": [], ""interfaces"": [ { ""name"": ""FooInterface"" } ] },
-    { ""name"": ""FooImplB"", ""kind"": ""OBJECT"", ""fields"": [], ""interfaces"": [ { ""name"": ""FooInterface"" } ] }
+    {
+        ""name"": ""FooInterface"",
+        ""kind"": ""INTERFACE"",
+        ""fields"": [ { ""name"": ""X"", ""type"": { ""name"": ""String"" }, ""args"": [] } ] },
+    {
+        ""name"": ""FooImplA"",
+        ""kind"": ""OBJECT"",
+        ""fields"": [
+            { ""name"": ""A"", ""type"": { ""name"": ""String"" }, ""args"": [] },
+            { ""name"": ""X"", ""type"": { ""name"": ""String"" }, ""args"": [] } ],
+        ""interfaces"": [ { ""name"": ""FooInterface"" } ] },
+    {
+        ""name"": ""FooImplB"",
+        ""kind"": ""OBJECT"",
+        ""fields"": [
+            { ""name"": ""B"", ""type"": { ""name"": ""String"" }, ""args"": [] },
+            { ""name"": ""X"", ""type"": { ""name"": ""String"" }, ""args"": [] } ],
+        ""interfaces"": [ { ""name"": ""FooInterface"" } ] }
     ]
 }}";
             var source = new IntrospectionSchemaSource(new DummyClient(data));
@@ -228,6 +240,36 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.IsAssignableFrom<IntGraphType>(it.GetField("intField").ResolvedType);
             var nn = Assert.IsAssignableFrom<NonNullGraphType>(it.GetField("nonNullIntField").ResolvedType);
             Assert.IsAssignableFrom<IntGraphType>(nn.ResolvedType);
+        }
+
+        [Fact]
+        public void EnumerationResolveTest()
+        {
+            var data = @"
+{ ""__schema"": {
+    ""queryType"": { ""name"": ""QT"" },
+    ""types"": [
+        {
+            ""name"": ""QT"",
+            ""kind"": ""OBJECT"",
+            ""fields"": [ { ""name"": ""enumField"", ""type"": { ""name"": ""enumType"" }, ""args"": [] } ],
+            ""interfaces"": []
+        },
+        {
+            ""name"": ""enumType"",
+            ""kind"": ""ENUM"",
+            ""enumValues"": [ { ""name"": ""FOO"" }, { ""name"": ""BAR"" } ]
+        }
+    ]
+}}";
+
+            var source = new IntrospectionSchemaSource(new DummyClient(data));
+            var schema = source.GetSchema();
+
+            var en = Assert.IsAssignableFrom<EnumerationGraphType>(schema.Query.GetField("enumField").ResolvedType);
+            Assert.Equal(2, en.Values.Count);
+            Assert.Equal("FOO", en.Values["FOO"].Name);
+            Assert.Equal("BAR", en.Values["BAR"].Name);
         }
 
         private sealed class DummyClient : IGraphQLClient
