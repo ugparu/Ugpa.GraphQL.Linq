@@ -39,6 +39,7 @@ namespace Ugpa.GraphQL.Linq
             var types = ((JArray)result["__schema"]["types"]).Cast<JObject>().ToArray();
 
             var dummySchema = new Schema();
+            dummySchema.Initialize();
             var cache = new Dictionary<string, IGraphType>();
 
             var qt = ResolveGraphType(_ => dummySchema.FindType(_) ?? (cache.ContainsKey(_) ? cache[_] : null), types, queryType, cache);
@@ -89,6 +90,7 @@ namespace Ugpa.GraphQL.Linq
                 "SCALAR" => ResolveScalarGraphType(type),
                 "INTERFACE" => ResolveInterfaceGraphType(findType, types, type, graphTypeCache),
                 "INPUT_OBJECT" => ResolveInputObjectGraphType(findType, types, type, graphTypeCache),
+                "ENUM" => ResolveEnumGraphType(findType, types, type, graphTypeCache),
                 _ => throw new NotImplementedException()
             };
         }
@@ -179,6 +181,17 @@ namespace Ugpa.GraphQL.Linq
                     ResolvedType = ResolveGraphType(findType, types, fieldType, graphTypeCache)
                 });
             }
+
+            return gType;
+        }
+
+        private EnumerationGraphType ResolveEnumGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        {
+            var typeName = (string)((JValue)type["name"]).Value;
+            var gType = new EnumerationGraphType { Name = typeName };
+
+            foreach (var value in type["enumValues"])
+                gType.AddValue(new EnumValueDefinition { Name = (string)((JValue)value["name"]).Value });
 
             return gType;
         }
