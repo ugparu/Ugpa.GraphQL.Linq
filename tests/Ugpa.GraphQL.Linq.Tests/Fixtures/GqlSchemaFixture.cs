@@ -5,6 +5,8 @@ namespace Ugpa.GraphQL.Linq.Tests.Fixtures
 {
     public sealed class GqlSchemaFixture
     {
+        public GqlSchemaFixture()
+        {
             Schema = global::GraphQL.Types.Schema.For(@"
                 type ProductAbout {
                     stamp: String
