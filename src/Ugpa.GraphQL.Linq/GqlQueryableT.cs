@@ -6,27 +6,15 @@ using System.Linq.Expressions;
 
 namespace Ugpa.GraphQL.Linq
 {
-    internal abstract class GqlQueryable
+    internal sealed class GqlQueryable<T> : IQueryable<T>
     {
-        protected GqlQueryable(string queryName)
-        {
-            QueryName = queryName;
-        }
-
-        public string QueryName { get; }
-    }
-
-    internal sealed class GqlQueryable<T> : GqlQueryable, IQueryable<T>
-    {
-        public GqlQueryable(GqlQueryProvider queryProvider, string queryName)
-            : base(queryName)
+        public GqlQueryable(GqlQueryProvider queryProvider)
         {
             Provider = queryProvider ?? throw new ArgumentNullException(nameof(queryProvider));
             Expression = Expression.Constant(this);
         }
 
         public GqlQueryable(GqlQueryProvider queryProvider, Expression expression)
-            : base(null)
         {
             Provider = queryProvider ?? throw new ArgumentNullException(nameof(queryProvider));
             Expression = expression;

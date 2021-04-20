@@ -21,13 +21,15 @@ namespace Ugpa.GraphQL.Linq
         {
             this.client = client;
             Schema = schema;
+            TypeMapper = new GraphTypeMapper(schema);
         }
 
         public ISchema Schema { get; }
 
+        public GraphTypeMapper TypeMapper { get; }
+
         public IQueryable CreateQuery(Expression expression)
         {
-            throw new NotImplementedException();
             var elementType = expression.Type;
             return (IQueryable)((Func<Expression, IQueryable<object>>)CreateQuery<object>).Method
                 .GetGenericMethodDefinition()
@@ -42,29 +44,30 @@ namespace Ugpa.GraphQL.Linq
 
         public object Execute(Expression expression)
         {
-            throw new NotImplementedException();
-        }
-
-        public TResult Execute<TResult>(Expression expression)
-        {
             var variablesResolver = new VariablesResolver();
-            var query = GqlQueryBuilder.BuildQuery(expression, variablesResolver);
+            var query = GqlQueryBuilder.BuildQuery(expression, variablesResolver, out var entryPoint);
             var request = new GraphQLRequest
             {
                 Query = query,
                 Variables = variablesResolver.GetAllVariables().ToDictionary(_ => _.name, _ => _.value)
             };
 
-            var result = Task.Run(() => client.SendQueryAsync<JToken>(request, CancellationToken.None)).Result;
+            var result = Task.Run(() => client.SendQueryAsync<JToken>(request, CancellationToken.None))
+                .GetAwaiter()
+                .GetResult();
 
-            expression = RewriteExpression(expression, result.Data);
-            if (expression is MethodCallExpression method)
+            expression = RewriteExpression(expression, result.Data[entryPoint]);
+
+            return expression switch
             {
-                return Expression.Lambda<Func<TResult>>(method).Compile()();
-            }
-
-            throw new NotImplementedException();
+                MethodCallExpression method => Expression.Lambda<Func<object>>(method).Compile()(),
+                ConstantExpression constant => constant.Value,
+                _ => throw new NotImplementedException()
+            };
         }
+
+        public TResult Execute<TResult>(Expression expression)
+            => (TResult)Execute(expression);
 
         private Expression RewriteExpression(Expression expression, JToken data)
         {
@@ -79,18 +82,22 @@ namespace Ugpa.GraphQL.Linq
                     }
                 case ConstantExpression constant:
                     {
-                        if (constant.Value is GqlQueryable qq && qq.QueryName is not null)
+                        if (constant.Value is IQueryable qq)
                         {
                             var type = ((IQueryable)qq).ElementType;
                             var listType = typeof(List<>).MakeGenericType(type);
                             object list;
-                            if (data[qq.QueryName] is JArray jArray)
+                            if (data is null)
+                            {
+                                list = Activator.CreateInstance(listType);
+                            }
+                            else if (data is JArray jArray)
                             {
                                 list = jArray.ToObject(listType);
                             }
-                            else if (data[qq.QueryName] is JObject jObject)
+                            else if (data is JObject jObject)
                             {
-                                var obj =  jObject.ToObject(type);
+                                var obj = jObject.ToObject(type);
                                 list = Activator.CreateInstance(listType);
                                 ((IList)list).Add(obj);
                             }

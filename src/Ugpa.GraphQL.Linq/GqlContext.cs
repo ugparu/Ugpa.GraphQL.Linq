@@ -1,14 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using GraphQL.Client.Abstractions;
 using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.Newtonsoft;
 using GraphQL.Types;
-using Newtonsoft.Json.Linq;
 
 namespace Ugpa.GraphQL.Linq
 {
@@ -32,7 +27,7 @@ namespace Ugpa.GraphQL.Linq
             queryProvider = new Lazy<GqlQueryProvider>(() => new GqlQueryProvider(gqlClient.Value, schema.Value));
         }
 
-        public IQueryable<T> Get<T>(string queryName)
-            => new GqlQueryable<T>(queryProvider.Value, queryName);
+        public IQueryable<T> Get<T>()
+            => new GqlQueryable<T>(queryProvider.Value);
     }
 }

@@ -1,3 +1,4 @@
+/.vs
 /src/Ugpa.GraphQL.Linq/bin
 /src/Ugpa.GraphQL.Linq/obj
 /tests/Ugpa.GraphQL.Linq.Tests/bin

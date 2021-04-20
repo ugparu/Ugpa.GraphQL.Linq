@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
 using GraphQL.Types;
 
 namespace Ugpa.GraphQL.Linq
@@ -22,10 +21,11 @@ namespace Ugpa.GraphQL.Linq
         private static readonly Lazy<MethodInfo> include = new Lazy<MethodInfo>(()
             => ((Func<IQueryable<int>, Expression<Func<int, int>>, IQueryable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
 
-        public static string BuildQuery(Expression expression, VariablesResolver variablesResolver)
+        public static string BuildQuery(Expression expression, VariablesResolver variablesResolver, out string entryPoint)
         {
             var (root, _) = GetQueryNode(expression, null, true, variablesResolver, null);
             root.Prune();
+            entryPoint = root.Name;
             var query = root.ToQueryString();
             return query;
         }
@@ -45,26 +45,17 @@ namespace Ugpa.GraphQL.Linq
 
         private static (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromConstant(ConstantExpression constant, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
         {
-            if (constant.Value is GqlQueryable qq)
+            if (constant.Value.GetType() is var qType && qType.IsGenericType && qType.GetGenericTypeDefinition() == typeof(GqlQueryable<>))
             {
-                if (qq.QueryName is null)
-                    throw new NotImplementedException();
-
-                var qqq = (IQueryable)qq;
-                var provider = (GqlQueryProvider)qqq.Provider;
-                var gType = GetGraphType(provider.Schema, qqq.ElementType);
-                var field = provider.Schema.Query.Fields.FirstOrDefault(_ => _.Name.Equals(qq.QueryName, StringComparison.OrdinalIgnoreCase));
-
-                if (field.ResolvedType != gType &&
-                    field.ResolvedType is IProvideResolvedType nn && nn.ResolvedType != gType)
-                {
-                    throw new InvalidOperationException();
-                }
+                var queryable = (IQueryable)constant.Value;
+                var provider = (GqlQueryProvider)queryable.Provider;
+                var gType = provider.TypeMapper.GetGraphType(queryable.ElementType);
 
                 switch (gType)
                 {
                     case IComplexGraphType complexGraphType:
                         {
+                            var field = GetBestFitQueryField(provider.Schema, gType, variablesSource);
                             var node = GetQueryNodeForComplexType(field, includeScalar, variablesResolver, variablesSource);
                             return (node, node);
                         }
@@ -183,18 +174,37 @@ namespace Ugpa.GraphQL.Linq
             return node;
         }
 
-        private static IGraphType GetGraphType(ISchema schema, Type clrType)
+        private static FieldType GetBestFitQueryField(ISchema schema, IGraphType graphType, object variablesSource)
         {
-            var gType = schema.AllTypes.FirstOrDefault(_ =>
-                _.GetType() is var t &&
-                t.IsGenericType &&
-                t.GenericTypeArguments.Length == 1 &&
-                t.GenericTypeArguments[0] == clrType)
-                ?? schema.AllTypes.FirstOrDefault(_ => _.Name == clrType.Name)
-                ?? schema.AllTypes.FirstOrDefault(_ => _.Name == $"{clrType.Name}Type")
-                ?? schema.AllTypes.FirstOrDefault(_ => _.Name == $"{clrType.Name}Interface");
+            var fields = schema.Query.Fields
+                .Where(_ =>
+                    _.ResolvedType == graphType ||
+                    _.ResolvedType is IProvideResolvedType prt && prt.ResolvedType == graphType)
+                .ToArray();
 
-            return gType ?? throw new InvalidOperationException();
+            if (!fields.Any())
+                throw new InvalidOperationException();
+
+            if (variablesSource is null)
+            {
+                return fields.Single(_ => !_.Arguments.Any());
+            }
+            else
+            {
+                if (variablesSource is IDictionary<string, object>)
+                {
+                    throw new NotImplementedException();
+                }
+                else
+                {
+                    var props = variablesSource.GetType().GetProperties();
+                    return fields
+                        .Single(_ =>
+                            _.Arguments.Count == props.Length &&
+                            _.Arguments.All(arg => props.Any(p => p.Name == arg.Name)));
+                }
+            }
         }
     }
 }
+

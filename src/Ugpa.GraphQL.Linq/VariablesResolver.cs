@@ -36,7 +36,7 @@ namespace Ugpa.GraphQL.Linq
                 v1[argument.Name] = v2;
             }
 
-            return string.Format(VariableNameFormat, v2.Item1);
+            return string.Format(VariableNameFormat, v2.index);
         }
 
         private object ResolveVariableValue(object variablesSource, string argumentName)

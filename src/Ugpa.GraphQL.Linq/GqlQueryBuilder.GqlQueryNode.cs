@@ -9,20 +9,21 @@ namespace Ugpa.GraphQL.Linq
     {
         private class GqlQueryNode
         {
-            private readonly string name;
             private readonly IEnumerable<QueryArgument> arguments;
             private readonly VariablesResolver variablesResolver;
             private readonly object variableValuesSource;
 
             public GqlQueryNode(string name, IGraphType graphType, IEnumerable<QueryArgument> arguments, VariablesResolver variablesResolver, object variableValuesSource)
             {
-                this.name = name;
                 this.arguments = arguments;
                 this.variablesResolver = variablesResolver;
                 this.variableValuesSource = variableValuesSource;
 
+                Name = name;
                 GraphType = graphType;
             }
+
+            public string Name { get; }
 
             public IGraphType GraphType { get; }
 
@@ -41,7 +42,7 @@ namespace Ugpa.GraphQL.Linq
 
             public void Prune()
             {
-                foreach (var group in Children.GroupBy(_ => _.name).Where(_ => _.Count() > 1))
+                foreach (var group in Children.GroupBy(_ => _.Name).Where(_ => _.Count() > 1))
                 {
                     var main = group.First();
                     foreach (var other in group.Skip(1))
@@ -84,7 +85,7 @@ namespace Ugpa.GraphQL.Linq
 
             public override string ToString()
             {
-                var builder = new StringBuilder(name);
+                var builder = new StringBuilder(Name);
 
                 if (arguments.Any())
                     builder.Append($"({string.Join(", ", arguments.Select(_ => _.Name))})");
@@ -92,7 +93,7 @@ namespace Ugpa.GraphQL.Linq
                 if (Children.Any())
                 {
                     builder.Append(" {");
-                    builder.Append(string.Join(" ", Children.Select(_ => _.name)));
+                    builder.Append(string.Join(" ", Children.Select(_ => _.Name)));
                     builder.Append(" }");
                 }
 
@@ -102,7 +103,7 @@ namespace Ugpa.GraphQL.Linq
             private void ToQueryString(StringBuilder queryBuilder, string indent, IEnumerable<string> exclude)
             {
                 indent += "  ";
-                queryBuilder.Append($"{indent}{name}");
+                queryBuilder.Append($"{indent}{Name}");
 
                 if (arguments.Any())
                 {
@@ -126,12 +127,12 @@ namespace Ugpa.GraphQL.Linq
                 if (GraphType is IAbstractGraphType)
                     queryBuilder.AppendLine($"{indent}  __typename");
 
-                foreach (var child in Children.Where(_ => !exclude.Contains(_.name)))
+                foreach (var child in Children.Where(_ => !exclude.Contains(_.Name)))
                 {
                     if (child.Children.Any())
                         child.ToQueryString(queryBuilder, indent, Enumerable.Empty<string>());
                     else
-                        queryBuilder.AppendLine($"{indent}  {child.name}");
+                        queryBuilder.AppendLine($"{indent}  {child.Name}");
                 }
 
                 if (GraphType is IAbstractGraphType)
@@ -139,7 +140,7 @@ namespace Ugpa.GraphQL.Linq
                     foreach (var child in PosibleTypes)
                     {
                         queryBuilder.Append($"{indent}... on {child.GraphType.Name}");
-                        child.ToQueryString(queryBuilder, indent, Children.Select(_ => _.name));
+                        child.ToQueryString(queryBuilder, indent, Children.Select(_ => _.Name));
                     }
                 }
 

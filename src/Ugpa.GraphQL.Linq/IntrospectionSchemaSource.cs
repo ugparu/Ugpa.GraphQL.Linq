@@ -33,7 +33,10 @@ namespace Ugpa.GraphQL.Linq
         {
             var request = new global::GraphQL.GraphQLRequest { Query = GetIntrospectionQuery() };
 
-            var result = Task.Run(async () => await gqlClient.SendQueryAsync<JObject>(request, CancellationToken.None)).Result.Data;
+            var result = Task.Run(async () => await gqlClient.SendQueryAsync<JObject>(request, CancellationToken.None))
+                .GetAwaiter()
+                .GetResult()
+                .Data;
 
             var queryType = (JObject)result["__schema"]["queryType"];
             var types = ((JArray)result["__schema"]["types"]).Cast<JObject>().ToArray();
@@ -56,6 +59,8 @@ namespace Ugpa.GraphQL.Linq
                 newSchema.RegisterType(type);
 
             newSchema.Initialize();
+
+            ValidateSchema(newSchema);
 
             return newSchema;
         }
@@ -90,7 +95,7 @@ namespace Ugpa.GraphQL.Linq
                 "SCALAR" => ResolveScalarGraphType(type),
                 "INTERFACE" => ResolveInterfaceGraphType(findType, types, type, graphTypeCache),
                 "INPUT_OBJECT" => ResolveInputObjectGraphType(findType, types, type, graphTypeCache),
-                "ENUM" => ResolveEnumGraphType(findType, types, type, graphTypeCache),
+                "ENUM" => ResolveEnumGraphType(type),
                 _ => throw new NotImplementedException()
             };
         }
@@ -104,6 +109,17 @@ namespace Ugpa.GraphQL.Linq
                 "ID" => new IdGraphType { Name = "ID" },
                 _ => throw new NotImplementedException()
             };
+        }
+
+        private EnumerationGraphType ResolveEnumGraphType(JObject type)
+        {
+            var typeName = (string)((JValue)type["name"]).Value;
+            var gType = new EnumerationGraphType { Name = typeName };
+
+            foreach (var value in type["enumValues"])
+                gType.AddValue(new EnumValueDefinition { Name = (string)((JValue)value["name"]).Value });
+
+            return gType;
         }
 
         private NonNullGraphType ResolveNonNullGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
@@ -185,15 +201,13 @@ namespace Ugpa.GraphQL.Linq
             return gType;
         }
 
-        private EnumerationGraphType ResolveEnumGraphType(Func<string, IGraphType> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        private void ValidateSchema(ISchema schema)
         {
-            var typeName = (string)((JValue)type["name"]).Value;
-            var gType = new EnumerationGraphType { Name = typeName };
-
-            foreach (var value in type["enumValues"])
-                gType.AddValue(new EnumValueDefinition { Name = (string)((JValue)value["name"]).Value });
-
-            return gType;
+            foreach (var type in schema.AllTypes)
+            {
+                if (type is IComplexGraphType complexGraphType && !complexGraphType.Fields.Any())
+                    throw new InvalidOperationException();
+            }
         }
     }
 }
