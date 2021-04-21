@@ -1,5 +1,7 @@
 using System.Linq;
 using System.Text.RegularExpressions;
+using GraphQL.Client.Abstractions;
+using Moq;
 using Ugpa.GraphQL.Linq.Tests.Fixtures;
 using Xunit;
 
@@ -13,7 +15,7 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         public GqlQueryBuilderTest(GqlSchemaFixture schemaFixture)
         {
-            provider = new GqlQueryProvider(null, schemaFixture.Schema);
+            provider = new GqlQueryProvider(Mock.Of<IGraphQLClient>(MockBehavior.Strict), schemaFixture.Schema);
         }
 
         [Fact]

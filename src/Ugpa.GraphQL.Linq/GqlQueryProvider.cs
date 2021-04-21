@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using GraphQL;
 using GraphQL.Client.Abstractions;
 using GraphQL.Types;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Ugpa.GraphQL.Linq
@@ -16,11 +17,18 @@ namespace Ugpa.GraphQL.Linq
     internal sealed class GqlQueryProvider : IQueryProvider
     {
         private readonly IGraphQLClient client;
+        private readonly JsonSerializer serializer;
 
         public GqlQueryProvider(IGraphQLClient client, ISchema schema)
+            : this(client, schema, JsonSerializer.CreateDefault())
         {
-            this.client = client;
-            Schema = schema;
+        }
+
+        public GqlQueryProvider(IGraphQLClient client, ISchema schema, JsonSerializer serializer)
+        {
+            this.client = client ?? throw new ArgumentNullException(nameof(client));
+            this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+            Schema = schema ?? throw new ArgumentNullException(nameof(schema));
             TypeMapper = new GraphTypeMapper(schema);
         }
 
@@ -82,41 +90,11 @@ namespace Ugpa.GraphQL.Linq
                     }
                 case ConstantExpression constant:
                     {
-                        if (constant.Value is IQueryable qq)
+                        return constant.Value switch
                         {
-                            var type = ((IQueryable)qq).ElementType;
-                            var listType = typeof(List<>).MakeGenericType(type);
-                            object list;
-                            if (data is null)
-                            {
-                                list = Activator.CreateInstance(listType);
-                            }
-                            else if (data is JArray jArray)
-                            {
-                                list = jArray.ToObject(listType);
-                            }
-                            else if (data is JObject jObject)
-                            {
-                                var obj = jObject.ToObject(type);
-                                list = Activator.CreateInstance(listType);
-                                ((IList)list).Add(obj);
-                            }
-                            else
-                            {
-                                throw new NotImplementedException();
-                            }
-
-                            var newQuery = ((Func<IEnumerable<int>, IQueryable<int>>)Queryable.AsQueryable).Method
-                                .GetGenericMethodDefinition()
-                                .MakeGenericMethod(type)
-                                .Invoke(null, new[] { list });
-
-                            return Expression.Constant(newQuery);
-                        }
-                        else
-                        {
-                            return expression;
-                        }
+                            IQueryable qq => RewriteConstantExpression(data, qq),
+                            _ => expression
+                        };
                     }
                 case UnaryExpression unary:
                     {
@@ -150,6 +128,41 @@ namespace Ugpa.GraphQL.Linq
                     {
                         throw new NotImplementedException();
                     }
+            };
+        }
+
+        private ConstantExpression RewriteConstantExpression(JToken data, IQueryable qq)
+        {
+            var list = Materialize(data, qq.ElementType);
+            var newQuery = ((Func<IEnumerable<int>, IQueryable<int>>)Queryable.AsQueryable).Method
+                .GetGenericMethodDefinition()
+                .MakeGenericMethod(qq.ElementType)
+                .Invoke(null, new[] { list });
+
+            return Expression.Constant(newQuery);
+        }
+
+        private object Materialize(JToken data, Type type)
+        {
+            var listType = typeof(List<>).MakeGenericType(type);
+            if (data is null)
+            {
+                return Activator.CreateInstance(listType);
+            }
+            else if (data is JArray jArray)
+            {
+                return jArray.ToObject(listType, serializer);
+            }
+            else if (data is JObject jObject)
+            {
+                var obj = jObject.ToObject(type, serializer);
+                var list = Activator.CreateInstance(listType);
+                ((IList)list).Add(obj);
+                return list;
+            }
+            else
+            {
+                throw new NotImplementedException();
             }
         }
     }
