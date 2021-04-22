@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -43,7 +44,10 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void DefaultTypeResolvesCorrectlyTest(Type objectType)
         {
             var materializer = new GqlMaterializer();
-            var serializer = JsonSerializer.Create();
+            var serializer = JsonSerializer.Create(new JsonSerializerSettings
+            {
+                ReferenceResolverProvider = () => Mock.Of<IReferenceResolver>()
+            });
             var reader = new JsonTextReader(new StringReader("{}"));
             var obj = materializer.ReadJson(reader, objectType, null, serializer);
             Assert.Equal(objectType, obj.GetType());
@@ -94,7 +98,8 @@ namespace Ugpa.GraphQL.Linq.Tests
                 Converters =
                 {
                     materializer
-                }
+                },
+                ReferenceResolverProvider = () => Mock.Of<IReferenceResolver>()
             });
 
             var reader = new JsonTextReader(new StringReader(@"
@@ -120,7 +125,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var reader = new JsonTextReader(new StringReader(@"{ ""intValue"": 123 }"));
             var existingObject = new FooA();
             var newObject = materializer.ReadJson(reader, typeof(FooA), existingObject, serializer);
-            Assert.Equal(existingObject, newObject);
+            Assert.Same(existingObject, newObject);
             Assert.Equal(123, existingObject.IntValue);
         }
 
@@ -150,6 +155,39 @@ namespace Ugpa.GraphQL.Linq.Tests
             var reader = new JsonTextReader(new StringReader(@"{ ""__typename"": ""FooBB"", ""stringValue"": ""123"" }"));
             var existingObject = new FooB();
             Assert.Throws<InvalidOperationException>(() => materializer.ReadJson(reader, typeof(FooB), existingObject, serializer));
+        }
+
+        [Fact]
+        public void ValuesAreCachedTest()
+        {
+            var materializer = new GqlMaterializer();
+            object cache = null;
+            
+            var referenceResolverMock = new Mock<IReferenceResolver>(MockBehavior.Strict);
+            
+            referenceResolverMock
+                .Setup(_ => _.GetReference(materializer, It.IsAny<object>()))
+                .Returns((object c, object v) => "123");
+
+            referenceResolverMock
+                .Setup(_ => _.ResolveReference(materializer, "123"))
+                .Returns((object c, string r) => cache);
+
+            referenceResolverMock
+                .Setup(_ => _.AddReference(materializer, "123", It.IsAny<object>()))
+                .Callback((object c, string r, object v) => cache = v);
+
+            var referenceResolver = referenceResolverMock.Object;
+
+            var serializer = JsonSerializer.Create(new JsonSerializerSettings
+            {
+                ReferenceResolverProvider = () => referenceResolver
+            });
+
+            var json = "{ }";
+            var o1 = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(object), null, serializer);
+            var o2 = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(object), null, serializer);
+            Assert.Same(o1, o2);
         }
 
         private interface IFoo

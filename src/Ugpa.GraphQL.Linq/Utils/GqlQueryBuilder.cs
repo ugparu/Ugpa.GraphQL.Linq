@@ -4,9 +4,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using GraphQL.Types;
-using Ugpa.GraphQL.Linq.Utils;
 
-namespace Ugpa.GraphQL.Linq
+namespace Ugpa.GraphQL.Linq.Utils
 {
     internal partial class GqlQueryBuilder
     {

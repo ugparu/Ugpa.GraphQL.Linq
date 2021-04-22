@@ -37,30 +37,43 @@ namespace Ugpa.GraphQL.Linq.Utils
 
         private object ReadObject(JsonReader reader, JsonObjectContract objectContract, JsonSerializer serializer)
         {
-            var token = JToken.ReadFrom(reader);
+            var token = (JObject)JToken.ReadFrom(reader);
             var objectType = objectContract.UnderlyingType;
             if (IsTypeExplicitlyDefined(token, serializer.SerializationBinder, ref objectType))
             {
                 reader = token.CreateReader();
                 return ReadJson(reader, objectType, null, serializer);
             }
-            else if (objectContract.UnderlyingType.IsAbstract)
-            {
-                throw new InvalidOperationException();
-            }
-            else if (objectContract.OverrideCreator is not null)
-            {
-                throw new NotImplementedException();
-            }
-            else if (objectContract.DefaultCreator is not null)
-            {
-                var value = objectContract.DefaultCreator();
-                serializer.Populate(token.CreateReader(), value);
-                return value;
-            }
             else
             {
-                throw new NotImplementedException();
+                if (objectContract.UnderlyingType.IsAbstract)
+                    throw new InvalidOperationException();
+
+                var id = serializer.ReferenceResolver.GetReference(this, token);
+                if (id is not null && serializer.ReferenceResolver.ResolveReference(this, id) is object value)
+                {
+                    serializer.Populate(token.CreateReader(), value);
+                    return value;
+                }
+
+                if (objectContract.OverrideCreator is not null)
+                {
+                    throw new NotImplementedException();
+                }
+                else if (objectContract.DefaultCreator is not null)
+                {
+                    value = objectContract.DefaultCreator();
+                    serializer.Populate(token.CreateReader(), value);
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+
+                if (id is not null)
+                    serializer.ReferenceResolver.AddReference(this, id, value);
+
+                return value;
             }
         }
 

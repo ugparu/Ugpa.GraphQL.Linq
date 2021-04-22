@@ -2,9 +2,8 @@
 using System.Linq;
 using System.Text;
 using GraphQL.Types;
-using Ugpa.GraphQL.Linq.Utils;
 
-namespace Ugpa.GraphQL.Linq
+namespace Ugpa.GraphQL.Linq.Utils
 {
     partial class GqlQueryBuilder
     {
