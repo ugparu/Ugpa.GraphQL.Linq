@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -10,37 +11,22 @@ namespace Ugpa.GraphQL.Linq.Utils
     {
         public override bool CanConvert(Type objectType)
         {
-            return Type.GetTypeCode(objectType) == TypeCode.Object;
+            return
+                Type.GetTypeCode(objectType) == TypeCode.Object &&
+                !typeof(IEnumerable).IsAssignableFrom(objectType);
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            var contract = serializer.ContractResolver.ResolveContract(objectType);
-
             if (existingValue is null)
             {
-                return contract switch
-                {
-                    JsonArrayContract arrayContract => ReadArray(reader, arrayContract, serializer),
-                    JsonObjectContract objectContract => ReadObject(reader, objectContract, serializer),
-                    JsonPrimitiveContract => reader.Value,
-                    _ => throw new NotImplementedException()
-                };
+                var contract = (JsonObjectContract)serializer.ContractResolver.ResolveContract(objectType);
+                return ReadObject(reader, contract, serializer);
             }
             else
             {
-                switch (contract)
-                {
-                    case JsonPrimitiveContract:
-                        {
-                            return reader.Value;
-                        }
-                    default:
-                        {
-                            serializer.Populate(reader, existingValue);
-                            return existingValue;
-                        }
-                }
+                PopulateObject(reader, existingValue, serializer);
+                return existingValue;
             }
         }
 
@@ -49,38 +35,18 @@ namespace Ugpa.GraphQL.Linq.Utils
             throw new NotImplementedException();
         }
 
-        private object ReadArray(JsonReader reader, JsonArrayContract arrayContract, JsonSerializer serializer)
-        {
-            if (arrayContract.OverrideCreator is not null)
-            {
-                throw new NotImplementedException();
-            }
-            else if (arrayContract.DefaultCreator is not null)
-            {
-                var value = arrayContract.DefaultCreator();
-                serializer.Populate(reader, value);
-                return value;
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
-
         private object ReadObject(JsonReader reader, JsonObjectContract objectContract, JsonSerializer serializer)
         {
             var token = JToken.ReadFrom(reader);
-
-            if (token.Children<JProperty>().FirstOrDefault(_ => _.Name == "__typename") is JProperty typeToken)
+            var objectType = objectContract.UnderlyingType;
+            if (IsTypeExplicitlyDefined(token, serializer.SerializationBinder, ref objectType))
             {
-                typeToken.Remove();
-                var typeName = (string)((JValue)typeToken.Value).Value;
-
-                var objectType = serializer.SerializationBinder.BindToType(null, typeName)
-                    ?? throw new InvalidOperationException();
-
                 reader = token.CreateReader();
                 return ReadJson(reader, objectType, null, serializer);
+            }
+            else if (objectContract.UnderlyingType.IsAbstract)
+            {
+                throw new InvalidOperationException();
             }
             else if (objectContract.OverrideCreator is not null)
             {
@@ -96,6 +62,39 @@ namespace Ugpa.GraphQL.Linq.Utils
             {
                 throw new NotImplementedException();
             }
+        }
+
+        private void PopulateObject(JsonReader reader, object existingValue, JsonSerializer serializer)
+        {
+            var token = JToken.ReadFrom(reader);
+
+            var objectType = existingValue.GetType();
+            var explicitType = objectType;
+
+            if (IsTypeExplicitlyDefined(token, serializer.SerializationBinder, ref explicitType) && objectType != explicitType)
+                throw new InvalidOperationException();
+
+            serializer.Populate(token.CreateReader(), existingValue);
+        }
+
+        private bool IsTypeExplicitlyDefined(JToken token, ISerializationBinder binder, ref Type objectType)
+        {
+            if (token.Children<JProperty>().FirstOrDefault(_ => _.Name == "__typename") is JProperty typeToken)
+            {
+                typeToken.Remove();
+                var typeName = (string)((JValue)typeToken.Value).Value;
+
+                var explicitObjectType = binder.BindToType(null, typeName)
+                    ?? throw new InvalidOperationException();
+
+                if (!objectType.IsAssignableFrom(explicitObjectType))
+                    throw new InvalidOperationException();
+
+                objectType = explicitObjectType;
+                return true;
+            }
+
+            return false;
         }
     }
 }
