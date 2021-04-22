@@ -8,6 +8,7 @@ using GraphQL.Client.Serializer.Newtonsoft;
 using GraphQL.Types;
 using Newtonsoft.Json.Linq;
 using Ugpa.GraphQL.Linq.Tests.Fixtures;
+using Ugpa.GraphQL.Linq.Utils;
 using Xunit;
 
 namespace Ugpa.GraphQL.Linq.Tests
