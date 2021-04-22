@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using GraphQL.Types;
+using Ugpa.GraphQL.Linq.Utils;
 
 namespace Ugpa.GraphQL.Linq
 {
