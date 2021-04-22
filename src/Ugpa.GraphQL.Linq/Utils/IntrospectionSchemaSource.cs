@@ -10,7 +10,7 @@ using GraphQL.Client.Serializer.Newtonsoft;
 using GraphQL.Types;
 using Newtonsoft.Json.Linq;
 
-namespace Ugpa.GraphQL.Linq
+namespace Ugpa.GraphQL.Linq.Utils
 {
     internal sealed class IntrospectionSchemaSource : ISchemaSource
     {
