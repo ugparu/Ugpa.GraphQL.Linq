@@ -20,13 +20,19 @@ namespace Ugpa.GraphQL.Linq.Utils
         public void PutEntity(string id, object entity)
         {
             var gType = graphTypeMapper.GetGraphType(entity.GetType());
-            var typeCache = cache.GetOrAdd(gType, _ => new ConcurrentDictionary<string, object>());
-            typeCache.TryAdd(id, entity);
+
+            AddEntity(gType, id, entity);
+
+            if (gType is IImplementInterfaces impl)
+            {
+                foreach (var intrfceType in impl.ResolvedInterfaces)
+                    AddEntity(intrfceType, id, entity);
+            }
         }
 
         public object GetEntity(JObject tokent, Type objectType, out string id)
         {
-            var gType = (ObjectGraphType)graphTypeMapper.GetGraphType(objectType) ?? throw new InvalidOperationException();
+            var gType = (IComplexGraphType)graphTypeMapper.GetGraphType(objectType) ?? throw new InvalidOperationException();
 
             var idFields = tokent.Properties()
                 .Join(gType.Fields, _ => _.Name, _ => _.Name, (p, f) => new { p, f })
@@ -46,6 +52,13 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
 
             return null;
+        }
+
+        private void AddEntity(IGraphType graphType, string id, object entity)
+        {
+            var typeCache = cache.GetOrAdd(graphType, _ => new ConcurrentDictionary<string, object>());
+            if (!typeCache.TryAdd(id, entity))
+                throw new InvalidOperationException();
         }
     }
 }
