@@ -21,49 +21,52 @@ namespace Ugpa.GraphQL.Linq.Utils
         private static readonly Lazy<MethodInfo> include = new Lazy<MethodInfo>(()
             => ((Func<IQueryable<int>, Expression<Func<int, int>>, IQueryable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
 
-        private readonly VariablesResolver variablesResolver;
+        private readonly ISchema schema;
+        private readonly IGraphTypeNameMapper graphTypeNameMapper;
 
-        public GqlQueryBuilder(VariablesResolver variablesResolver)
+        public GqlQueryBuilder(ISchema schema, IGraphTypeNameMapper graphTypeNameMapper)
         {
-            this.variablesResolver = variablesResolver;
+            this.schema = schema ?? throw new ArgumentNullException(nameof(schema));
+            this.graphTypeNameMapper = graphTypeNameMapper ?? throw new ArgumentNullException(nameof(graphTypeNameMapper));
         }
 
-        public string BuildQuery(Expression expression, out string entryPoint)
+        public string BuildQuery(Expression expression, VariablesResolver variablesResolver, out string entryPoint)
         {
-            var (root, _) = GetQueryNode(expression, null, true, null);
+            var (root, _) = GetQueryNode(expression, null, true, variablesResolver, null);
             root.Prune();
             entryPoint = root.Name;
             var query = root.ToQueryString();
             return query;
         }
 
-        private (GqlQueryNode root, GqlQueryNode head) GetQueryNode(Expression expression, IComplexGraphType owner, bool includeScalar, object variablesSource)
+        private (GqlQueryNode root, GqlQueryNode head) GetQueryNode(Expression expression, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
         {
             return expression switch
             {
-                MethodCallExpression methodCall => GetQueryNodeFromMethodCall(methodCall, owner, includeScalar, variablesSource),
-                ConstantExpression constant => GetQueryNodeFromConstant(constant, includeScalar, variablesSource),
-                UnaryExpression unary => GetQueryNode(unary.Operand, owner, includeScalar, variablesSource),
-                LambdaExpression lambda => GetQueryNode(lambda.Body, owner, includeScalar, variablesSource),
-                MemberExpression member => GetQueryNodeFromMember(member, owner, includeScalar),
+                MethodCallExpression methodCall => GetQueryNodeFromMethodCall(methodCall, owner, includeScalar, variablesResolver, variablesSource),
+                ConstantExpression constant => GetQueryNodeFromConstant(constant, includeScalar, variablesResolver, variablesSource),
+                UnaryExpression unary => GetQueryNode(unary.Operand, owner, includeScalar, variablesResolver, variablesSource),
+                LambdaExpression lambda => GetQueryNode(lambda.Body, owner, includeScalar, variablesResolver, variablesSource),
+                MemberExpression member => GetQueryNodeFromMember(member, owner, includeScalar, variablesResolver),
                 _ => throw new NotImplementedException()
             };
         }
 
-        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromConstant(ConstantExpression constant, bool includeScalar, object variablesSource)
+        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromConstant(ConstantExpression constant, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
         {
             if (constant.Value.GetType() is var qType && qType.IsGenericType && qType.GetGenericTypeDefinition() == typeof(GqlQueryable<>))
             {
                 var queryable = (IQueryable)constant.Value;
                 var provider = (GqlQueryProvider)queryable.Provider;
-                var gType = provider.TypeMapper.GetGraphType(queryable.ElementType);
+                var gTypeName = graphTypeNameMapper.GetTypeName(queryable.ElementType);
+                var gType = schema.AllTypes.FirstOrDefault(_ => _.Name == gTypeName) ?? throw new InvalidOperationException();
 
                 switch (gType)
                 {
                     case IComplexGraphType complexGraphType:
                         {
-                            var field = GetBestFitQueryField(provider.Schema, gType, variablesSource);
-                            var node = GetQueryNodeForComplexType(field, includeScalar, variablesSource);
+                            var field = GetBestFitQueryField(gType, variablesSource);
+                            var node = GetQueryNodeForComplexType(field, includeScalar, variablesResolver, variablesSource);
                             return (node, node);
                         }
                     default:
@@ -78,7 +81,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromMethodCall(MethodCallExpression methodCall, IComplexGraphType owner, bool includeScalar, object variablesSource)
+        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromMethodCall(MethodCallExpression methodCall, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
         {
             if (methodCall.Method.IsGenericMethod)
             {
@@ -86,22 +89,22 @@ namespace Ugpa.GraphQL.Linq.Utils
 
                 if (methodDefinition == select.Value || methodDefinition == selectMany.Value)
                 {
-                    var node = GetQueryNode(methodCall.Arguments[0], owner, false, variablesSource);
-                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.head.GraphType, includeScalar, variablesSource);
+                    var node = GetQueryNode(methodCall.Arguments[0], owner, false, variablesResolver, variablesSource);
+                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.head.GraphType, includeScalar, variablesResolver, variablesSource);
                     node.head.Children.Add(subNode.root);
                     return (node.root, subNode.head);
                 }
                 else if (methodDefinition == include.Value)
                 {
-                    var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesSource);
-                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.root.GraphType, includeScalar, variablesSource);
+                    var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesResolver, variablesSource);
+                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.root.GraphType, includeScalar, variablesResolver, variablesSource);
                     node.root.Children.Add(subNode.root);
                     return (node.root, subNode.head);
                 }
                 else if (methodDefinition == whereParams.Value)
                 {
                     var innerVariablesSource = ((ConstantExpression)methodCall.Arguments[1]).Value;
-                    var node = GetQueryNode(methodCall.Arguments[0], owner, includeScalar, innerVariablesSource);
+                    var node = GetQueryNode(methodCall.Arguments[0], owner, includeScalar, variablesResolver, innerVariablesSource);
                     return node;
                 }
                 else
@@ -115,12 +118,12 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromMember(MemberExpression member, IComplexGraphType owner, bool includeScalar)
+        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromMember(MemberExpression member, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver)
         {
             GqlQueryNode root = null;
             if (member.Expression is MemberExpression nestedMember)
             {
-                var nestedNode = GetQueryNodeFromMember(nestedMember, owner, false);
+                var nestedNode = GetQueryNodeFromMember(nestedMember, owner, false, variablesResolver);
                 root = nestedNode.root;
                 owner = (IComplexGraphType)nestedNode.head.GraphType;
             }
@@ -128,7 +131,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             var field = owner.Fields.FirstOrDefault(_ => _.Name.Equals(member.Member.Name, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidOperationException();
 
-            var node = GetQueryNodeForComplexType(field, includeScalar, null);
+            var node = GetQueryNodeForComplexType(field, includeScalar, variablesResolver, null);
             if (root is null)
             {
                 return (node, node);
@@ -140,17 +143,17 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        private GqlQueryNode GetQueryNodeForComplexType(FieldType field, bool includeScalarFields, object variablesSource)
+        private GqlQueryNode GetQueryNodeForComplexType(FieldType field, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
         {
             var complexGraphType =
                 field.ResolvedType as IComplexGraphType
                 ?? (field.ResolvedType as IProvideResolvedType)?.ResolvedType as IComplexGraphType
                 ?? throw new NotImplementedException();
 
-            return GetQueryNodeForComplexType(field.Name, complexGraphType, field.Arguments, includeScalarFields, variablesSource);
+            return GetQueryNodeForComplexType(field.Name, complexGraphType, field.Arguments, includeScalarFields, variablesResolver, variablesSource);
         }
 
-        private GqlQueryNode GetQueryNodeForComplexType(string name, IComplexGraphType complexGraphType, IEnumerable<QueryArgument> arguments, bool includeScalarFields, object variablesSource)
+        private GqlQueryNode GetQueryNodeForComplexType(string name, IComplexGraphType complexGraphType, IEnumerable<QueryArgument> arguments, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
         {
             var node = new GqlQueryNode(name, complexGraphType, arguments, variablesResolver, variablesSource);
 
@@ -173,6 +176,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                         posibleType,
                         Enumerable.Empty<QueryArgument>(),
                         includeScalarFields,
+                        variablesResolver,
                         variablesSource));
                 }
             }
@@ -180,7 +184,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             return node;
         }
 
-        private FieldType GetBestFitQueryField(ISchema schema, IGraphType graphType, object variablesSource)
+        private FieldType GetBestFitQueryField(IGraphType graphType, object variablesSource)
         {
             var fields = schema.Query.Fields
                 .Where(_ =>

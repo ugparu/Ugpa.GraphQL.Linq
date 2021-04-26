@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using GraphQL.Client.Abstractions;
-using GraphQL.Types;
+using Moq;
 using Ugpa.GraphQL.Linq.Tests.Fixtures;
+using Ugpa.GraphQL.Linq.Utils;
 using Xunit;
 using static Ugpa.GraphQL.Linq.Tests.Fixtures.GqlSchemaFixture;
 
@@ -10,12 +12,16 @@ namespace Ugpa.GraphQL.Linq.Tests
 {
     public sealed class GqlQueryProviderTest : IClassFixture<GqlSchemaFixture>, IClassFixture<GqlClientFixture>
     {
-        private readonly ISchema schema;
+        private readonly GqlQueryBuilder queryBuilder;
         private readonly IGraphQLClient client;
 
         public GqlQueryProviderTest(GqlSchemaFixture schemaFixture, GqlClientFixture clientFixture)
         {
-            schema = schemaFixture.Schema;
+            var mapper = new Mock<IGraphTypeNameMapper>();
+            mapper.Setup(_ => _.GetTypeName(It.IsAny<Type>())).Returns((Type t) => t.Name);
+
+            queryBuilder = new GqlQueryBuilder(schemaFixture.Schema, mapper.Object);
+
             client = clientFixture.CreateClientFor(
                 schemaFixture.Schema,
                 new
@@ -32,7 +38,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void GenericCreateQueryTest()
         {
-            var provider = new GqlQueryProvider(client, schema);
+            var provider = new GqlQueryProvider(client, queryBuilder);
             var sourceQuery = new GqlQueryable<Product>(provider);
             provider.CreateQuery<Product>(sourceQuery.Expression);
         }
@@ -40,7 +46,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void GenericExecuteTest()
         {
-            var provider = new GqlQueryProvider(client, schema);
+            var provider = new GqlQueryProvider(client, queryBuilder);
             var query = new GqlQueryable<Product>(provider);
             var result = provider.Execute<IEnumerable<Product>>(query.Expression);
             Assert.IsAssignableFrom<IEnumerable<Product>>(result);
@@ -50,7 +56,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void NonGenericCreateQueryTest()
         {
-            var provider = new GqlQueryProvider(client, schema);
+            var provider = new GqlQueryProvider(client, queryBuilder);
             var sourceQuery = new GqlQueryable<Product>(provider);
             var query = provider.CreateQuery(sourceQuery.Expression);
         }
@@ -58,7 +64,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void NonGenericExecuteTest()
         {
-            var provider = new GqlQueryProvider(client, schema);
+            var provider = new GqlQueryProvider(client, queryBuilder);
             var query = new GqlQueryable<Product>(provider);
             var result = provider.Execute(query.Expression);
             var pp = Assert.IsAssignableFrom<IEnumerable<Product>>(result);

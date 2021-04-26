@@ -1,6 +1,8 @@
+using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using GraphQL.Client.Abstractions;
+using GraphQL.Types;
 using Moq;
 using Ugpa.GraphQL.Linq.Tests.Fixtures;
 using Ugpa.GraphQL.Linq.Utils;
@@ -13,10 +15,16 @@ namespace Ugpa.GraphQL.Linq.Tests
     public class GqlQueryBuilderTest : IClassFixture<GqlSchemaFixture>
     {
         private readonly GqlQueryProvider provider;
+        private readonly GqlQueryBuilder queryBuilder;
 
         public GqlQueryBuilderTest(GqlSchemaFixture schemaFixture)
         {
-            provider = new GqlQueryProvider(Mock.Of<IGraphQLClient>(MockBehavior.Strict), schemaFixture.Schema);
+            var mapper = new Mock<IGraphTypeNameMapper>();
+            mapper.Setup(_ => _.GetTypeName(It.IsAny<Type>())).Returns((Type t) => t.Name);
+
+            queryBuilder = new GqlQueryBuilder(schemaFixture.Schema, mapper.Object);
+
+            provider = new GqlQueryProvider(Mock.Of<IGraphQLClient>(MockBehavior.Strict), queryBuilder);
         }
 
         [Fact]
@@ -24,7 +32,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         {
             var query = new GqlQueryable<Product>(provider);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -37,7 +45,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<Product>(provider)
                 .Select(_ => _.ProductInfo);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -50,7 +58,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<Product>(provider)
                 .Select(_ => _.ProductInfo.About);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -64,7 +72,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 .Select(_ => _.ProductInfo)
                 .Select(_ => _.About);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -77,7 +85,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<Product>(provider)
                 .SelectMany(_ => _.Schemas);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -90,7 +98,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<Product>(provider)
                 .Include(_ => _.ProductInfo);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -103,7 +111,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new GqlQueryable<Product>(provider)
                 .Include(_ => _.ProductInfo.About);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -117,7 +125,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 .Include(_ => _.ProductInfo)
                 .Include(_ => _.ProductInfo.About);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -131,7 +139,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 .Where(new { productId = 111 });
 
             var variablesResolver = new VariablesResolver();
-            var queryText = new GqlQueryBuilder(variablesResolver).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, variablesResolver, out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("schemas", entryPoint);
@@ -150,7 +158,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 .Select(_ => _.ProductInfo);
 
             var variablesResolver = new VariablesResolver();
-            var queryText = new GqlQueryBuilder(variablesResolver).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, variablesResolver, out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("product", entryPoint);
@@ -166,7 +174,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         {
             var query = new GqlQueryable<TypeTemplate>(provider);
 
-            var queryText = new GqlQueryBuilder(new VariablesResolver()).BuildQuery(query.Expression, out var entryPoint);
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("templates", entryPoint);

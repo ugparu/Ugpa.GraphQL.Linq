@@ -5,26 +5,31 @@ using Newtonsoft.Json.Serialization;
 
 namespace Ugpa.GraphQL.Linq.Utils
 {
-    internal sealed class GraphTypeMapper
+    internal sealed class GraphTypeMapper : IGraphTypeMapper, IGraphTypeNameMapper
     {
         private readonly ISchema schema;
-        private readonly ISerializationBinder binder;
+        private readonly ISerializationBinder serializationBinder;
 
-        public GraphTypeMapper(ISchema schema, ISerializationBinder binder)
+        public GraphTypeMapper(ISchema schema, ISerializationBinder serializationBinder)
         {
             this.schema = schema ?? throw new ArgumentNullException(nameof(schema));
-            this.binder = binder ?? throw new ArgumentNullException(nameof(schema));
+            this.serializationBinder = serializationBinder ?? throw new ArgumentNullException(nameof(serializationBinder));
         }
 
-        public IGraphType GetGraphType(Type clrType)
+        public IGraphType GetGraphType(Type objectType)
         {
-            binder.BindToName(clrType, out var assemblyName, out var typeName);
+            var typeName = GetTypeName(objectType);
+            return schema.AllTypes.FirstOrDefault(_ => _.Name == typeName) ?? throw new InvalidOperationException();
+        }
 
-            if (typeName == null || typeName == clrType.FullName)
-                typeName = clrType.Name;
+        public string GetTypeName(Type objectType)
+        {
+            serializationBinder.BindToName(objectType, out _, out var typeName);
 
-            var gType = schema.AllTypes.FirstOrDefault(_ => _.Name == typeName);
-            return gType ?? throw new InvalidOperationException();
+            if (typeName == null || typeName == objectType.FullName)
+                typeName = objectType.Name;
+
+            return typeName;
         }
     }
 }

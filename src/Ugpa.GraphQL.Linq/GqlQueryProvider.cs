@@ -8,9 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using GraphQL;
 using GraphQL.Client.Abstractions;
-using GraphQL.Types;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Ugpa.GraphQL.Linq.Utils;
 
 namespace Ugpa.GraphQL.Linq
 {
@@ -18,23 +18,19 @@ namespace Ugpa.GraphQL.Linq
     {
         private readonly IGraphQLClient client;
         private readonly JsonSerializer serializer;
+        private readonly GqlQueryBuilder queryBuilder;
 
-        public GqlQueryProvider(IGraphQLClient client, ISchema schema)
-            : this(client, schema, JsonSerializer.CreateDefault())
+        public GqlQueryProvider(IGraphQLClient client, GqlQueryBuilder queryBuilder)
+            : this(client, queryBuilder, JsonSerializer.CreateDefault())
         {
         }
 
-        public GqlQueryProvider(IGraphQLClient client, ISchema schema, JsonSerializer serializer)
+        public GqlQueryProvider(IGraphQLClient client, GqlQueryBuilder queryBuilder, JsonSerializer serializer)
         {
             this.client = client ?? throw new ArgumentNullException(nameof(client));
+            this.queryBuilder = queryBuilder ?? throw new ArgumentNullException(nameof(queryBuilder));
             this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
-            Schema = schema ?? throw new ArgumentNullException(nameof(schema));
-            TypeMapper = new GraphTypeMapper(schema);
         }
-
-        public ISchema Schema { get; }
-
-        public GraphTypeMapper TypeMapper { get; }
 
         public IQueryable CreateQuery(Expression expression)
         {
@@ -53,7 +49,7 @@ namespace Ugpa.GraphQL.Linq
         public object Execute(Expression expression)
         {
             var variablesResolver = new VariablesResolver();
-            var query = GqlQueryBuilder.BuildQuery(expression, variablesResolver, out var entryPoint);
+            var query = queryBuilder.BuildQuery(expression, variablesResolver, out var entryPoint);
             var request = new GraphQLRequest
             {
                 Query = query,

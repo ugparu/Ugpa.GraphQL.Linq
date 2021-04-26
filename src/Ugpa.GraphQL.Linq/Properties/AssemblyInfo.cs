@@ -6,3 +6,4 @@ using System.Text;
 using System.Threading.Tasks;
 
 [assembly:InternalsVisibleTo("Ugpa.GraphQL.Linq.Tests")]
+[assembly:InternalsVisibleTo("DynamicProxyGenAssembly2")]

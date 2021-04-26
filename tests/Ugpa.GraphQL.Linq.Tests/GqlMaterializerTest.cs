@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GraphQL.Types;
+using GraphQL.Utilities;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -33,17 +35,17 @@ namespace Ugpa.GraphQL.Linq.Tests
         [InlineData(typeof(object), true)]
         public void CanConvertTest(Type objectType, bool expectedCanConvert)
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer();
             var canConvert = materializer.CanConvert(objectType);
             Assert.Equal(expectedCanConvert, canConvert);
         }
 
         [Theory]
-        [InlineData(typeof(FooA))]
-        [InlineData(typeof(FooB))]
-        public void DefaultTypeResolvesCorrectlyTest(Type objectType)
+        [InlineData(typeof(FooA), "type FooA { }")]
+        [InlineData(typeof(FooB), "type FooB { }")]
+        public void DefaultTypeResolvesCorrectlyTest(Type objectType, string typeDefinitions)
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer(typeDefinitions);
             var serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
                 ReferenceResolverProvider = () => Mock.Of<IReferenceResolver>()
@@ -58,7 +60,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [InlineData(typeof(Foo))]
         public void FailOnReadAbstractTypeTest(Type objectType)
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer();
             var serializer = JsonSerializer.Create();
             var reader = new JsonTextReader(new StringReader("{}"));
             Assert.Throws<InvalidOperationException>(() => materializer.ReadJson(reader, objectType, null, serializer));
@@ -67,7 +69,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void FailOnReadMissingTypeTest()
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer();
             var serializer = JsonSerializer.Create();
             var reader = new JsonTextReader(new StringReader(@"{ ""__typename"": ""Bar"" }"));
             Assert.Throws<InvalidOperationException>(() => materializer.ReadJson(reader, typeof(object), null, serializer));
@@ -76,7 +78,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void FailOnInheritanceHierarchyViolationTest()
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer();
             var serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
                 SerializationBinder = Mock.Of<ISerializationBinder>(_ => _.BindToType(null, "Bar") == typeof(Bar))
@@ -89,7 +91,10 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void MappedTypesReadCorrectlyTest()
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer(@"
+                type FooA { }
+                type FooB { }");
+
             var serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
                 SerializationBinder = Mock.Of<ISerializationBinder>(_ =>
@@ -120,7 +125,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void ReadExistingObjectSuccessfullTest()
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer();
             var serializer = JsonSerializer.Create();
             var reader = new JsonTextReader(new StringReader(@"{ ""intValue"": 123 }"));
             var existingObject = new FooA();
@@ -132,7 +137,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void FailOnExistingObjectInheritanceViolationTest()
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer();
             var serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
                 SerializationBinder = Mock.Of<ISerializationBinder>(_ => _.BindToType(null, "FooA") == typeof(FooA))
@@ -146,7 +151,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void FailOnExistingObjectTypeMismatchTest()
         {
-            var materializer = new GqlMaterializer();
+            var materializer = CreateMaterializer();
             var serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
                 SerializationBinder = Mock.Of<ISerializationBinder>(_ => _.BindToType(null, "FooBB") == typeof(FooBB))
@@ -160,34 +165,29 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void ValuesAreCachedTest()
         {
-            var materializer = new GqlMaterializer();
-            object cache = null;
-            
-            var referenceResolverMock = new Mock<IReferenceResolver>(MockBehavior.Strict);
-            
-            referenceResolverMock
-                .Setup(_ => _.GetReference(materializer, It.IsAny<object>()))
-                .Returns((object c, object v) => "123");
+            var materializer = CreateMaterializer("type Object { id: ID }");
 
-            referenceResolverMock
-                .Setup(_ => _.ResolveReference(materializer, "123"))
-                .Returns((object c, string r) => cache);
+            var serializer = JsonSerializer.Create();
 
-            referenceResolverMock
-                .Setup(_ => _.AddReference(materializer, "123", It.IsAny<object>()))
-                .Callback((object c, string r, object v) => cache = v);
-
-            var referenceResolver = referenceResolverMock.Object;
-
-            var serializer = JsonSerializer.Create(new JsonSerializerSettings
-            {
-                ReferenceResolverProvider = () => referenceResolver
-            });
-
-            var json = "{ }";
+            var json = @"{ ""id"": ""cachedObject1"" }";
             var o1 = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(object), null, serializer);
             var o2 = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(object), null, serializer);
             Assert.Same(o1, o2);
+        }
+
+        private GqlMaterializer CreateMaterializer()
+            => CreateMaterializer(string.Empty);
+
+        private GqlMaterializer CreateMaterializer(string typeDefinitions, Action<SchemaBuilder> configure = null)
+        {
+            var schema = Schema.For(typeDefinitions, configure);
+            var mapper = new Mock<IGraphTypeMapper>();
+            var types = new Dictionary<Type, IGraphType>();
+            mapper
+                .Setup(_ => _.GetGraphType(It.IsAny<Type>()))
+                .Returns((Type t) => schema.AllTypes.First(_ => _.Name == t.Name));
+
+            return new GqlMaterializer(new EntityCache(mapper.Object));
         }
 
         private interface IFoo

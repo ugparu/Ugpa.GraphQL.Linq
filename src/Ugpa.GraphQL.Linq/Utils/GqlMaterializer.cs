@@ -9,6 +9,13 @@ namespace Ugpa.GraphQL.Linq.Utils
 {
     internal sealed class GqlMaterializer : JsonConverter
     {
+        private readonly EntityCache entityCache;
+
+        public GqlMaterializer(EntityCache entityCache)
+        {
+            this.entityCache = entityCache;
+        }
+
         public override bool CanConvert(Type objectType)
         {
             return
@@ -49,8 +56,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 if (objectContract.UnderlyingType.IsAbstract)
                     throw new InvalidOperationException();
 
-                var id = serializer.ReferenceResolver.GetReference(this, token);
-                if (id is not null && serializer.ReferenceResolver.ResolveReference(this, id) is object value)
+                if (entityCache.GetEntity(token, objectContract.UnderlyingType, out var id) is object value)
                 {
                     serializer.Populate(token.CreateReader(), value);
                     return value;
@@ -71,7 +77,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 }
 
                 if (id is not null)
-                    serializer.ReferenceResolver.AddReference(this, id, value);
+                    entityCache.PutEntity(id, value);
 
                 return value;
             }
