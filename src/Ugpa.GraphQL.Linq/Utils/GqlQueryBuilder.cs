@@ -21,6 +21,9 @@ namespace Ugpa.GraphQL.Linq.Utils
         private static readonly Lazy<MethodInfo> include = new Lazy<MethodInfo>(()
             => ((Func<IQueryable<int>, Expression<Func<int, int>>, IQueryable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
 
+        private static readonly Lazy<MethodInfo> includeEnum = new Lazy<MethodInfo>(()
+            => ((Func<IEnumerable<int>, Func<int, int>, IEnumerable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
+
         private readonly ISchema schema;
         private readonly IGraphTypeNameMapper graphTypeNameMapper;
 
@@ -95,7 +98,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                     node.head.Children.Add(subNode.root);
                     return (node.root, subNode.head);
                 }
-                else if (methodDefinition == include.Value)
+                else if (methodDefinition == include.Value || methodDefinition == includeEnum.Value)
                 {
                     var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesResolver, variablesSource);
                     var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.root.GraphType, includeScalar, variablesResolver, variablesSource);

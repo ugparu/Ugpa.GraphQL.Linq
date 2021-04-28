@@ -428,6 +428,35 @@ namespace Ugpa.GraphQL.Linq.Tests
                 queryText);
         }
 
+        [Fact]
+        public void NestedCollectionIncludeTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type DrawSchemaInfo {
+                    author: String!
+                }
+                type DrawSchema {
+                    id: Int!
+                    info: DrawSchemaInfo!
+                }
+                type Product {
+                    id: Int!
+                    schemas: [DrawSchema]
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
+                .Include(p => p.Schemas.Include(s => s.Info));
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { products { id schemas { id info { author } } } }", queryText);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
@@ -462,6 +491,11 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         private class DrawSchema
+        {
+            public DrawSchemaInfo Info { get; }
+        }
+
+        private class DrawSchemaInfo
         {
         }
 
