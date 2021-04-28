@@ -45,7 +45,11 @@ namespace Ugpa.GraphQL.Linq.Utils
             {
                 MethodCallExpression methodCall => GetQueryNodeFromMethodCall(methodCall, owner, includeScalar, variablesResolver, variablesSource),
                 ConstantExpression constant => GetQueryNodeFromConstant(constant, includeScalar, variablesResolver, variablesSource),
-                UnaryExpression unary => GetQueryNode(unary.Operand, owner, includeScalar, variablesResolver, variablesSource),
+                UnaryExpression unary => unary.NodeType switch
+                {
+                    ExpressionType.Quote => GetQueryNode(unary.Operand, owner, includeScalar, variablesResolver, variablesSource),
+                    _ => throw new NotImplementedException()
+                },
                 LambdaExpression lambda => GetQueryNode(lambda.Body, owner, includeScalar, variablesResolver, variablesSource),
                 MemberExpression member => GetQueryNodeFromMember(member, owner, includeScalar, variablesResolver),
                 _ => throw new NotImplementedException()
@@ -57,16 +61,14 @@ namespace Ugpa.GraphQL.Linq.Utils
             if (constant.Value.GetType() is var qType && qType.IsGenericType && qType.GetGenericTypeDefinition() == typeof(GqlQueryable<>))
             {
                 var queryable = (IQueryable)constant.Value;
-                var provider = (GqlQueryProvider)queryable.Provider;
-                var gTypeName = graphTypeNameMapper.GetTypeName(queryable.ElementType);
-                var gType = schema.AllTypes.FirstOrDefault(_ => _.Name == gTypeName) ?? throw new InvalidOperationException();
+                var gType = GetGraphType(queryable.ElementType);
 
                 switch (gType)
                 {
                     case IComplexGraphType complexGraphType:
                         {
                             var field = GetBestFitQueryField(gType, variablesSource);
-                            var node = GetQueryNodeForComplexType(field, includeScalar, variablesResolver, variablesSource);
+                            var node = GetQueryNodeForComplexType(field, GqlQueryNode.NodeType.Field, includeScalar, variablesResolver, variablesSource);
                             return (node, node);
                         }
                     default:
@@ -120,42 +122,60 @@ namespace Ugpa.GraphQL.Linq.Utils
 
         private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromMember(MemberExpression member, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver)
         {
-            GqlQueryNode root = null;
-            if (member.Expression is MemberExpression nestedMember)
+            GqlQueryNode GetQueryNodeFromCurrentMember(IComplexGraphType ownerType, GqlQueryNode.NodeType nodeType)
             {
-                var nestedNode = GetQueryNodeFromMember(nestedMember, owner, false, variablesResolver);
-                root = nestedNode.root;
-                owner = (IComplexGraphType)nestedNode.head.GraphType;
+                var field = ownerType.Fields.FirstOrDefault(_ => _.Name.Equals(member.Member.Name, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidOperationException();
+
+                return GetQueryNodeForComplexType(field, nodeType, includeScalar, variablesResolver, null);
             }
 
-            var field = owner.Fields.FirstOrDefault(_ => _.Name.Equals(member.Member.Name, StringComparison.OrdinalIgnoreCase))
-                ?? throw new InvalidOperationException();
-
-            var node = GetQueryNodeForComplexType(field, includeScalar, variablesResolver, null);
-            if (root is null)
+            if (member.Expression is UnaryExpression unary && unary.NodeType == ExpressionType.Convert)
             {
-                return (node, node);
+                var subType = (IComplexGraphType)GetGraphType(unary.Type);
+                var node = GetQueryNodeForComplexType(string.Empty, GqlQueryNode.NodeType.Subtype, subType, Enumerable.Empty<QueryArgument>(), false, variablesResolver, null);
+                var subNode = GetQueryNodeFromCurrentMember(subType, GqlQueryNode.NodeType.Field);
+                node.Children.Add(subNode);
+                return (node, subNode);
+            }
+            else if (member.Expression is MemberExpression nestedMember)
+            {
+                var nestedNode = GetQueryNodeFromMember(nestedMember, owner, false, variablesResolver);
+                var node = GetQueryNodeFromCurrentMember((IComplexGraphType)nestedNode.head.GraphType, GqlQueryNode.NodeType.Field);
+                nestedNode.root.Children.Add(node);
+                return (nestedNode.root, node);
             }
             else
             {
-                root.Children.Add(node);
-                return (root, node);
+                var node = GetQueryNodeFromCurrentMember(owner, GqlQueryNode.NodeType.Field);
+                return (node, node);
             }
         }
 
-        private GqlQueryNode GetQueryNodeForComplexType(FieldType field, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
+        private GqlQueryNode GetQueryNodeForComplexType(FieldType field, GqlQueryNode.NodeType nodeType, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
         {
             var complexGraphType =
                 field.ResolvedType as IComplexGraphType
                 ?? (field.ResolvedType as IProvideResolvedType)?.ResolvedType as IComplexGraphType
                 ?? throw new NotImplementedException();
 
-            return GetQueryNodeForComplexType(field.Name, complexGraphType, field.Arguments, includeScalarFields, variablesResolver, variablesSource);
+            return GetQueryNodeForComplexType(field.Name, nodeType, complexGraphType, field.Arguments, includeScalarFields, variablesResolver, variablesSource);
         }
 
-        private GqlQueryNode GetQueryNodeForComplexType(string name, IComplexGraphType complexGraphType, IEnumerable<QueryArgument> arguments, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
+        private GqlQueryNode GetQueryNodeForComplexType(string name, GqlQueryNode.NodeType nodeType, IComplexGraphType complexGraphType, IEnumerable<QueryArgument> arguments, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
         {
-            var node = new GqlQueryNode(name, complexGraphType, arguments, variablesResolver, variablesSource);
+            var node = new GqlQueryNode(name, nodeType, complexGraphType, arguments, variablesResolver, variablesSource);
+
+            if (complexGraphType is IAbstractGraphType)
+            {
+                node.Children.Add(new GqlQueryNode(
+                    "__typename",
+                    GqlQueryNode.NodeType.Field,
+                    new StringGraphType(),
+                    Enumerable.Empty<QueryArgument>(),
+                    variablesResolver,
+                    variablesSource));
+            }
 
             if (includeScalarFields)
             {
@@ -171,8 +191,9 @@ namespace Ugpa.GraphQL.Linq.Utils
             {
                 foreach (var posibleType in abstractGraphType.PossibleTypes)
                 {
-                    node.PosibleTypes.Add(GetQueryNodeForComplexType(
+                    node.Children.Add(GetQueryNodeForComplexType(
                         string.Empty,
+                        GqlQueryNode.NodeType.Subtype,
                         posibleType,
                         Enumerable.Empty<QueryArgument>(),
                         includeScalarFields,
@@ -182,6 +203,13 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
 
             return node;
+        }
+
+        private IGraphType GetGraphType(Type clrType)
+        {
+            var gTypeName = graphTypeNameMapper.GetTypeName(clrType);
+            return schema.AllTypes.FirstOrDefault(_ => _.Name == gTypeName)
+                ?? throw new InvalidOperationException();
         }
 
         private FieldType GetBestFitQueryField(IGraphType graphType, object variablesSource)

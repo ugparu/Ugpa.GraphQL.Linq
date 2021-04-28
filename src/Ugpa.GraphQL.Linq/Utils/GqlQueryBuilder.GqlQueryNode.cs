@@ -9,12 +9,14 @@ namespace Ugpa.GraphQL.Linq.Utils
     {
         private class GqlQueryNode
         {
+            private readonly NodeType type;
             private readonly IEnumerable<QueryArgument> arguments;
             private readonly VariablesResolver variablesResolver;
             private readonly object variableValuesSource;
 
-            public GqlQueryNode(string name, IGraphType graphType, IEnumerable<QueryArgument> arguments, VariablesResolver variablesResolver, object variableValuesSource)
+            public GqlQueryNode(string name, NodeType type, IGraphType graphType, IEnumerable<QueryArgument> arguments, VariablesResolver variablesResolver, object variableValuesSource)
             {
+                this.type = type;
                 this.arguments = arguments;
                 this.variablesResolver = variablesResolver;
                 this.variableValuesSource = variableValuesSource;
@@ -29,20 +31,19 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             public ICollection<GqlQueryNode> Children { get; } = new List<GqlQueryNode>();
 
-            public ICollection<GqlQueryNode> PosibleTypes { get; } = new List<GqlQueryNode>();
-
             public static GqlQueryNode FromField(FieldType field, VariablesResolver variablesResolver, object variableValuesSource)
             {
                 var graphType = field.ResolvedType is IProvideResolvedType provideResolvedType
                     ? provideResolvedType.ResolvedType
                     : field.ResolvedType;
 
-                return new GqlQueryNode(field.Name, graphType, field.Arguments, variablesResolver, variableValuesSource);
+                return new GqlQueryNode(field.Name, NodeType.Field, graphType, field.Arguments, variablesResolver, variableValuesSource);
             }
 
             public void Prune()
             {
-                foreach (var group in Children.GroupBy(_ => _.Name).Where(_ => _.Count() > 1))
+                // Сливаем поля комплексных типов в один узел.
+                foreach (var group in Children.Where(_ => _.type == NodeType.Field).GroupBy(_ => _.Name).Where(_ => _.Count() > 1))
                 {
                     var main = group.First();
                     foreach (var other in group.Skip(1))
@@ -57,14 +58,41 @@ namespace Ugpa.GraphQL.Linq.Utils
                     }
                 }
 
-                foreach (var child in Children)
+                // Удаляем из подтипов поля базового типа.
+                foreach (var child in Children.Where(_ => _.type == NodeType.Subtype))
+                {
+                    foreach (var field in child.Children.Join(Children, _ => _.Name, _ => _.Name, (f, c) => f).ToArray())
+                        child.Children.Remove(field);
+                }
+
+                // Сливаем узлы с одинаковым подтипом.
+                foreach (var group in Children.Where(_ => _.type == NodeType.Subtype).GroupBy(_ => _.GraphType).Where(_ => _.Count() > 1))
+                {
+                    var main = group.First();
+                    foreach (var other in group.Skip(1))
+                    {
+                        foreach (var child in other.Children)
+                            main.Children.Add(child);
+
+                        Children.Remove(other);
+                    }
+                }
+
+                // Удаляем пустые узлы комплексного типа.
+                foreach (var child in Children.ToArray())
+                {
                     child.Prune();
+                    if (child.GraphType is IComplexGraphType && !child.Children.Any())
+                    {
+                        Children.Remove(child);
+                    }
+                }
             }
 
             public string ToQueryString()
             {
                 var subBuilder = new StringBuilder();
-                ToQueryString(subBuilder, string.Empty, Enumerable.Empty<string>());
+                ToQueryString(subBuilder, string.Empty);
 
                 var builder = new StringBuilder();
                 builder.Append("query");
@@ -100,7 +128,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 return builder.ToString();
             }
 
-            private void ToQueryString(StringBuilder queryBuilder, string indent, IEnumerable<string> exclude)
+            private void ToQueryString(StringBuilder queryBuilder, string indent)
             {
                 indent += "  ";
                 queryBuilder.Append($"{indent}{Name}");
@@ -124,27 +152,27 @@ namespace Ugpa.GraphQL.Linq.Utils
 
                 queryBuilder.AppendLine(" {");
 
-                if (GraphType is IAbstractGraphType)
-                    queryBuilder.AppendLine($"{indent}  __typename");
-
-                foreach (var child in Children.Where(_ => !exclude.Contains(_.Name)))
+                foreach (var child in Children.Where(_ => _.type == NodeType.Field))
                 {
                     if (child.Children.Any())
-                        child.ToQueryString(queryBuilder, indent, Enumerable.Empty<string>());
+                        child.ToQueryString(queryBuilder, indent);
                     else
                         queryBuilder.AppendLine($"{indent}  {child.Name}");
                 }
 
-                if (GraphType is IAbstractGraphType)
+                foreach (var child in Children.Where(_ => _.type == NodeType.Subtype))
                 {
-                    foreach (var child in PosibleTypes)
-                    {
-                        queryBuilder.Append($"{indent}... on {child.GraphType.Name}");
-                        child.ToQueryString(queryBuilder, indent, Children.Select(_ => _.Name));
-                    }
+                    queryBuilder.Append($"{indent}  ... on {child.GraphType.Name}");
+                    child.ToQueryString(queryBuilder, indent);
                 }
 
                 queryBuilder.AppendLine($"{indent}}}");
+            }
+
+            public enum NodeType
+            {
+                Field,
+                Subtype
             }
         }
     }

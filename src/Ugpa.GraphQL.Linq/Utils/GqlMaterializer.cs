@@ -4,6 +4,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
+using Ugpa.GraphQL.Linq.Properties;
 
 namespace Ugpa.GraphQL.Linq.Utils
 {
@@ -104,7 +105,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 var typeName = (string)((JValue)typeToken.Value).Value;
 
                 var explicitObjectType = binder.BindToType(null, typeName)
-                    ?? throw new InvalidOperationException();
+                    ?? throw new InvalidOperationException(string.Format(Resources.GqlMaterializer_UnableBindToType, typeName));
 
                 if (!objectType.IsAssignableFrom(explicitObjectType))
                     throw new InvalidOperationException();
