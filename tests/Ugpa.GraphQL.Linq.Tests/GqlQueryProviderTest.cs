@@ -39,15 +39,15 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void GenericCreateQueryTest()
         {
             var provider = new GqlQueryProvider(client, queryBuilder);
-            var sourceQuery = new GqlQueryable<Product>(provider);
-            provider.CreateQuery<Product>(sourceQuery.Expression);
+            var sourceQuery = new Product[0].AsQueryable();
+            Assert.NotNull(provider.CreateQuery<Product>(sourceQuery.Expression));
         }
 
         [Fact]
         public void GenericExecuteTest()
         {
             var provider = new GqlQueryProvider(client, queryBuilder);
-            var query = new GqlQueryable<Product>(provider);
+            var query = new Product[0].AsQueryable();
             var result = provider.Execute<IEnumerable<Product>>(query.Expression);
             Assert.IsAssignableFrom<IEnumerable<Product>>(result);
             Assert.Equal(3, result.Count());
@@ -57,15 +57,15 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void NonGenericCreateQueryTest()
         {
             var provider = new GqlQueryProvider(client, queryBuilder);
-            var sourceQuery = new GqlQueryable<Product>(provider);
-            var query = provider.CreateQuery(sourceQuery.Expression);
+            var sourceQuery = new Product[0].AsQueryable();
+            Assert.NotNull(provider.CreateQuery(sourceQuery.Expression));
         }
 
         [Fact]
         public void NonGenericExecuteTest()
         {
             var provider = new GqlQueryProvider(client, queryBuilder);
-            var query = new GqlQueryable<Product>(provider);
+            var query = new Product[0].AsQueryable();
             var result = provider.Execute(query.Expression);
             var pp = Assert.IsAssignableFrom<IEnumerable<Product>>(result);
             Assert.Equal(3, pp.Count());

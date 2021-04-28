@@ -8,12 +8,6 @@ namespace Ugpa.GraphQL.Linq
 {
     internal sealed class GqlQueryable<T> : IQueryable<T>
     {
-        public GqlQueryable(GqlQueryProvider queryProvider)
-        {
-            Provider = queryProvider ?? throw new ArgumentNullException(nameof(queryProvider));
-            Expression = Expression.Constant(this);
-        }
-
         public GqlQueryable(GqlQueryProvider queryProvider, Expression expression)
         {
             Provider = queryProvider ?? throw new ArgumentNullException(nameof(queryProvider));

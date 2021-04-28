@@ -58,14 +58,13 @@ namespace Ugpa.GraphQL.Linq.Utils
 
         private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromConstant(ConstantExpression constant, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
         {
-            if (constant.Value.GetType() is var qType && qType.IsGenericType && qType.GetGenericTypeDefinition() == typeof(GqlQueryable<>))
+            if (constant.Value is IQueryable queryable)
             {
-                var queryable = (IQueryable)constant.Value;
                 var gType = GetGraphType(queryable.ElementType);
 
                 switch (gType)
                 {
-                    case IComplexGraphType complexGraphType:
+                    case IComplexGraphType:
                         {
                             var field = GetBestFitQueryField(gType, variablesSource);
                             var node = GetQueryNodeForComplexType(field, GqlQueryNode.NodeType.Field, includeScalar, variablesResolver, variablesSource);

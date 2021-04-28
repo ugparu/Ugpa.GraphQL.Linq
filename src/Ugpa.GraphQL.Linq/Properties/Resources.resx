@@ -120,4 +120,7 @@
   <data name="GqlMaterializer_UnableBindToType" xml:space="preserve">
     <value>Не удалось сопоставить тип данных для GraphQL типа "{0}".</value>
   </data>
+  <data name="GraphTypeMapper_TypeNotDefined" xml:space="preserve">
+    <value>Тип "{0}" отсутствует в схеме.</value>
+  </data>
 </root>

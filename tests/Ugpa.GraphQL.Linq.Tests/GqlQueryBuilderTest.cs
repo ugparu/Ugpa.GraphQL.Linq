@@ -1,36 +1,44 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using GraphQL.Client.Abstractions;
 using GraphQL.Types;
+using GraphQL.Utilities;
 using Moq;
-using Ugpa.GraphQL.Linq.Tests.Fixtures;
 using Ugpa.GraphQL.Linq.Utils;
 using Xunit;
 
-using static Ugpa.GraphQL.Linq.Tests.Fixtures.GqlSchemaFixture;
-
 namespace Ugpa.GraphQL.Linq.Tests
 {
-    public class GqlQueryBuilderTest : IClassFixture<GqlSchemaFixture>
+    public class GqlQueryBuilderTest
     {
-        private readonly GqlQueryProvider provider;
-        private readonly GqlQueryBuilder queryBuilder;
+        private readonly IGraphTypeNameMapper mapper;
 
-        public GqlQueryBuilderTest(GqlSchemaFixture schemaFixture)
+        public GqlQueryBuilderTest()
         {
-            var mapper = new Mock<IGraphTypeNameMapper>();
-            mapper.Setup(_ => _.GetTypeName(It.IsAny<Type>())).Returns((Type t) => t.Name);
-
-            queryBuilder = new GqlQueryBuilder(schemaFixture.Schema, mapper.Object);
-
-            provider = new GqlQueryProvider(Mock.Of<IGraphQLClient>(MockBehavior.Strict), queryBuilder);
+            var mapperMock = new Mock<IGraphTypeNameMapper>();
+            mapperMock.Setup(_ => _.GetTypeName(It.IsAny<Type>())).Returns((Type t) => t.Name);
+            mapper = mapperMock.Object;
         }
 
         [Fact]
         public void SimpleQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider);
+            var queryBuilder = GetQueryBuilder(@"
+                type ProductInfo {
+                    version: String!
+                }
+                type Product {
+                    id: ID
+                    name: String!
+                    comment: String!
+                    productInfo: ProductInfo!
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0].AsQueryable();
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
@@ -42,10 +50,29 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void SingleSelectQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type About {
+                    developer: String
+                }
+                type ProductInfo {
+                    title: String!
+                    version: String!
+                    about: About!
+                }
+                type Product {
+                    id: Int!
+                    productInfo: ProductInfo!
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
                 .Select(_ => _.ProductInfo);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
+
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
@@ -55,7 +82,24 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void NestedPropertySelectQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type About {
+                    stamp: String!
+                }
+                type ProductInfo {
+                    title: String!
+                    about: About!
+                }
+                type Product {
+                    id: Int!
+                    productInfo: ProductInfo!
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
                 .Select(_ => _.ProductInfo.About);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
@@ -68,7 +112,24 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void ChainedSelectQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type About {
+                    stamp: String!
+                }
+                type ProductInfo {
+                    title: String!
+                    about: About!
+                }
+                type Product {
+                    id: Int!
+                    productInfo: ProductInfo!
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
                 .Select(_ => _.ProductInfo)
                 .Select(_ => _.About);
 
@@ -82,7 +143,21 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void SelectManyQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type Schema {
+                    id: ID
+                    name: String!
+                }
+                type Product {
+                    id: Int!
+                    schemas: [Schema]
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
                 .SelectMany(_ => _.Schemas);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
@@ -95,7 +170,23 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void SingleIncludeQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type ProductInfo {
+                    title: String!
+                    version: String!
+                }
+                type Product {
+                    id: ID
+                    name: String!
+                    comment: String
+                    productInfo: ProductInfo!
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
                 .Include(_ => _.ProductInfo);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
@@ -108,7 +199,26 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void NestedIncludeQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type About {
+                    stamp: String!
+                }
+                type ProductInfo {
+                    comment: String!
+                    about: About!
+                }
+                type Product {
+                    id: ID
+                    name: String!
+                    comment: String
+                    productInfo: ProductInfo!
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
                 .Include(_ => _.ProductInfo.About);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
@@ -121,7 +231,27 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void MultipleIncludesQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type About {
+                    stamp: String!
+                }
+                type ProductInfo {
+                    title: String!
+                    version: String!
+                    about: About!
+                }
+                type Product {
+                    id: ID
+                    name: String!
+                    comment: String
+                    productInfo: ProductInfo!
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
                 .Include(_ => _.ProductInfo)
                 .Include(_ => _.ProductInfo.About);
 
@@ -135,7 +265,17 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void SimpleParametrizedQueryTest()
         {
-            var query = new GqlQueryable<DrawSchema>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type DrawSchema {
+                    id: ID
+                    name: String!
+                }
+                type Query {
+                    schemas(productId: Int!): [DrawSchema]
+                }");
+
+            var query = new DrawSchema[0]
+                .AsQueryable()
                 .Where(new { productId = 111 });
 
             var variablesResolver = new VariablesResolver();
@@ -153,7 +293,22 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void ParametrizedSelectQueryTest()
         {
-            var query = new GqlQueryable<Product>(provider)
+            var queryBuilder = GetQueryBuilder(@"
+                type ProductInfo {
+                    title: String!
+                    version: String!
+                }
+                type Product {
+                    id: ID
+                    productInfo: ProductInfo!
+                }
+                type Query {
+                    products: [Product]
+                    product(productId: Int!): Product
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
                 .Where(new { productId = 111 })
                 .Select(_ => _.ProductInfo);
 
@@ -172,15 +327,110 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void InterfaceImplementationQueryTest()
         {
-            var query = new GqlQueryable<TypeTemplate>(provider);
+            var queryBuilder = GetQueryBuilder(@"
+                interface TypeTemplate {
+                    id: ID
+                    name: String!
+                }
+                type TextTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    fontFamily: String!
+                    fontSize: Int!            
+                }
+                type RailchainTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    mainLineWidth: Int!
+                    sideLineWidth: Int!
+                }
+                type TextboxFrame {
+                    borderWidth: Int!
+                }
+                type TextboxTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    frame: TextboxFrame!
+                }
+                type Query {
+                    templates: [TypeTemplate]
+                }",
+                cfg =>
+                {
+                    cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException();
+                });
+
+            var query = new TypeTemplate[0].AsQueryable();
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("templates", entryPoint);
             Assert.Equal(
-                "query { templates { __typename id name ... on TextTemplate { fontFamily fontSize } ... on RailchainTemplate { mainLineWidth sideLineWidth } } }",
+                "query { templates { __typename id name " +
+                "... on TextTemplate { fontFamily fontSize } " +
+                "... on RailchainTemplate { mainLineWidth sideLineWidth } " +
+                "} }",
                 queryText);
+        }
+
+        [Fact]
+        public void IncludeSubtypeFieldQueryTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface TypeTemplate {
+                    id: ID
+                    name: String!
+                }
+                type TextTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    fontFamily: String!
+                    fontSize: Int!
+                }
+                type RailchainTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    mainLineWidth: Int!
+                    sideLineWidth: Int!
+                }
+                type TextboxFrame {
+                    borderWidth: Int!
+                }
+                type TextboxTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    frame: TextboxFrame!
+                }
+                type Query {
+                    templates: [TypeTemplate]
+                }",
+                cfg =>
+                {
+                    cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException();
+                });
+
+            var query = new TypeTemplate[0]
+                .AsQueryable()
+                .Include(_ => ((TextboxTemplate)_).Frame);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("templates", entryPoint);
+
+            Assert.Equal(
+                "query { templates { __typename id name " +
+                "... on TextTemplate { fontFamily fontSize } " +
+                "... on RailchainTemplate { mainLineWidth sideLineWidth } " +
+                "... on TextboxTemplate { frame { borderWidth } } " +
+                "} }",
+                queryText);
+        }
+
+        private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
+        {
+            return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
         }
 
         private string PostProcessQuery(string query)
@@ -193,6 +443,39 @@ namespace Ugpa.GraphQL.Linq.Tests
             query = Regex.Replace(query, @"\n", " ");
             query = Regex.Replace(query, @"\s\s+", " ");
             return query.Trim();
+        }
+
+        private class Product
+        {
+            public ProductInfo ProductInfo { get; }
+
+            public IEnumerable<DrawSchema> Schemas { get; }
+        }
+
+        private class ProductInfo
+        {
+            public ProductAbout About { get; }
+        }
+
+        private class ProductAbout
+        {
+        }
+
+        private class DrawSchema
+        {
+        }
+
+        private class TypeTemplate
+        {
+        }
+
+        private class TextboxTemplate : TypeTemplate
+        {
+            public TextboxFrame Frame { get; }
+        }
+
+        private class TextboxFrame
+        {
         }
     }
 }

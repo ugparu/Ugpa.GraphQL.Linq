@@ -68,5 +68,14 @@ namespace Ugpa.GraphQL.Linq.Properties {
                 return ResourceManager.GetString("GqlMaterializer_UnableBindToType", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Тип &quot;{0}&quot; отсутствует в схеме..
+        /// </summary>
+        internal static string GraphTypeMapper_TypeNotDefined {
+            get {
+                return ResourceManager.GetString("GraphTypeMapper_TypeNotDefined", resourceCulture);
+            }
+        }
     }
 }

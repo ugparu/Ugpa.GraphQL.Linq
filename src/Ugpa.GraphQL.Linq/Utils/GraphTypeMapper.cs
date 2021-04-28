@@ -2,6 +2,7 @@
 using System.Linq;
 using GraphQL.Types;
 using Newtonsoft.Json.Serialization;
+using Ugpa.GraphQL.Linq.Properties;
 
 namespace Ugpa.GraphQL.Linq.Utils
 {
@@ -19,7 +20,8 @@ namespace Ugpa.GraphQL.Linq.Utils
         public IGraphType GetGraphType(Type objectType)
         {
             var typeName = GetTypeName(objectType);
-            return schema.AllTypes.FirstOrDefault(_ => _.Name == typeName) ?? throw new InvalidOperationException();
+            return schema.AllTypes.FirstOrDefault(_ => _.Name == typeName)
+                ?? throw new InvalidOperationException(string.Format(Resources.GraphTypeMapper_TypeNotDefined, typeName));
         }
 
         public string GetTypeName(Type objectType)

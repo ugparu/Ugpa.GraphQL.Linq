@@ -97,7 +97,7 @@ namespace Ugpa.GraphQL.Linq
                         return unary.NodeType switch
                         {
                             ExpressionType.Quote => Expression.Quote(RewriteExpression(unary.Operand, data)),
-                            _ => throw new NotImplementedException()
+                            _ => unary
                         };
                     }
                 case LambdaExpression lambda:
