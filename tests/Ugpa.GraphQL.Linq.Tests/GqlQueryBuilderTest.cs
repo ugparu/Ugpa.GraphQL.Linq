@@ -457,6 +457,51 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.Equal("query { products { id schemas { id info { author } } } }", queryText);
         }
 
+        [Fact]
+        public void NestedCollectionCastIncludeTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type DrawSchemaInfo {
+                    author: String!
+                }
+                interface DrawSchema {
+                    id: Int!
+                    info: DrawSchemaInfo!
+                }
+                type SimpleDrawSchema implements DrawSchema {
+                    id: Int!
+                    info: DrawSchemaInfo!
+                }
+                type ExtendedDrawSchema implements DrawSchema {
+                    id: Int!
+                    info: DrawSchemaInfo!
+                    extendedInfo: DrawSchemaInfo!
+                }
+                type Product {
+                    id: Int!
+                    schemas: [DrawSchema]
+                }
+                type Query {
+                    products: [Product]
+                }",
+                cfg =>
+                {
+                    cfg.Types.For("DrawSchema").ResolveType = _ => throw new NotImplementedException();
+                });
+
+            var query = new Product[0]
+                .AsQueryable()
+                .Include(p => p.Schemas.Include(s => s.Info))
+                .Include(p => p.Schemas.Include(s => ((ExtendedDrawSchema)s).ExtendedInfo));
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                @"query { products { id schemas { __typename id info { author } ... on ExtendedDrawSchema { extendedInfo { author } } } } }",
+                queryText);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
@@ -497,6 +542,11 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private class DrawSchemaInfo
         {
+        }
+
+        private class ExtendedDrawSchema : DrawSchema
+        {
+            public DrawSchemaInfo ExtendedInfo { get; }
         }
 
         private class TypeTemplate

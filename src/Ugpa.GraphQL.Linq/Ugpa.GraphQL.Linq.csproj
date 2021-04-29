@@ -9,10 +9,16 @@
     <PackageReference Include="GraphQL" Version="3.3.2" />
     <PackageReference Include="GraphQL.Client" Version="3.2.2" />
     <PackageReference Include="GraphQL.Client.Serializer.Newtonsoft" Version="3.2.2" />
+    <PackageReference Include="Ugpa.Json.Serialization" Version="0.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\IntrospectionQuery.gql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx" Generator="ResXFileCodeGenerator" LastGenOutput="Resources.Designer.cs" />
+    <Compile Update="Properties\Resources.Designer.cs" DesignTime="True" AutoGen="True" DependentUpon="Resources.resx" />
   </ItemGroup>
 
 </Project>

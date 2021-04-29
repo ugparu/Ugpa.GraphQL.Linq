@@ -26,11 +26,14 @@ namespace Ugpa.GraphQL.Linq.Utils
 
         private readonly ISchema schema;
         private readonly IGraphTypeNameMapper graphTypeNameMapper;
+        private readonly Lazy<IGraphType> nonNullString;
 
         public GqlQueryBuilder(ISchema schema, IGraphTypeNameMapper graphTypeNameMapper)
         {
             this.schema = schema ?? throw new ArgumentNullException(nameof(schema));
             this.graphTypeNameMapper = graphTypeNameMapper ?? throw new ArgumentNullException(nameof(graphTypeNameMapper));
+
+            nonNullString = new Lazy<IGraphType>(() => new NonNullGraphType(schema.FindType("String")));
         }
 
         public string BuildQuery(Expression expression, VariablesResolver variablesResolver, out string entryPoint)
@@ -173,7 +176,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 node.Children.Add(new GqlQueryNode(
                     "__typename",
                     GqlQueryNode.NodeType.Field,
-                    new StringGraphType(),
+                    nonNullString.Value,
                     Enumerable.Empty<QueryArgument>(),
                     variablesResolver,
                     variablesSource));
