@@ -79,7 +79,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [Fact]
         public void ErrorOnDuplicatePutTest()
         {
-            var cache = CreateEntityCache(@"type Object { }");
+            var cache = CreateEntityCache(@"type Object { id: ID }");
             var obj = new object();
             cache.PutEntity("123", obj);
             Assert.Throws<InvalidOperationException>(() => cache.PutEntity("123", obj));

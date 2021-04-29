@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using GraphQL;
 using GraphQL.Client.Abstractions;
 using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.Newtonsoft;
@@ -31,7 +32,7 @@ namespace Ugpa.GraphQL.Linq.Utils
 
         private Schema InitSchema(IGraphQLClient gqlClient)
         {
-            var request = new global::GraphQL.GraphQLRequest { Query = GetIntrospectionQuery() };
+            var request = new GraphQLRequest { Query = GetIntrospectionQuery() };
 
             var result = Task.Run(async () => await gqlClient.SendQueryAsync<JObject>(request, CancellationToken.None))
                 .GetAwaiter()
@@ -43,14 +44,15 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             var dummySchema = new Schema();
             dummySchema.Initialize();
+            var schemaTypes = new SchemaTypes(dummySchema, new DefaultServiceProvider());
             var cache = new Dictionary<string, IGraphType>();
 
-            var qt = ResolveGraphType(_ => dummySchema.FindType(_) ?? (cache.ContainsKey(_) ? cache[_] : null), types, queryType, cache);
+            var qt = ResolveGraphType(_ => schemaTypes[_] ?? (cache.ContainsKey(_) ? cache[_] : null), types, queryType, cache);
 
             var commonTypes = cache.Values.ToArray();
 
             foreach (var type in types)
-                ResolveGraphType(_ => dummySchema.FindType(_) ?? (cache.ContainsKey(_) ? cache[_] : null), types, type, cache);
+                ResolveGraphType(_ => schemaTypes[_] ?? (cache.ContainsKey(_) ? cache[_] : null), types, type, cache);
 
             var newSchema = new Schema();
             newSchema.Query = (IObjectGraphType)qt;
@@ -59,9 +61,6 @@ namespace Ugpa.GraphQL.Linq.Utils
                 newSchema.RegisterType(type);
 
             newSchema.Initialize();
-
-            ValidateSchema(newSchema);
-
             return newSchema;
         }
 
@@ -199,15 +198,6 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
 
             return gType;
-        }
-
-        private void ValidateSchema(ISchema schema)
-        {
-            foreach (var type in schema.AllTypes)
-            {
-                if (type is IComplexGraphType complexGraphType && !complexGraphType.Fields.Any())
-                    throw new InvalidOperationException();
-            }
         }
     }
 }

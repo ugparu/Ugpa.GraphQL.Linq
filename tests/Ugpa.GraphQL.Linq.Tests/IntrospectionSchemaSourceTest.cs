@@ -23,14 +23,6 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
-        public void EmptyQueryTypeTest()
-        {
-            var client = clientFixture.CreateClientFor(@"type Query { }");
-            var source = new IntrospectionSchemaSource(client);
-            Assert.Throws<InvalidOperationException>(() => source.GetSchema());
-        }
-
-        [Fact]
         public void ScalarFieldsResolveTest()
         {
             var client = clientFixture.CreateClientFor(@"
@@ -115,8 +107,8 @@ namespace Ugpa.GraphQL.Linq.Tests
             var i = Assert.IsAssignableFrom<InterfaceGraphType>(schema.Query.GetField("foo").ResolvedType);
             Assert.Equal(2, i.PossibleTypes.Count());
 
-            var implA = Assert.IsAssignableFrom<ObjectGraphType>(schema.FindType("FooImplA"));
-            var implB = Assert.IsAssignableFrom<ObjectGraphType>(schema.FindType("FooImplB"));
+            var implA = Assert.IsAssignableFrom<ObjectGraphType>(schema.AllTypes.First(_ => _.Name == "FooImplA"));
+            var implB = Assert.IsAssignableFrom<ObjectGraphType>(schema.AllTypes.First(_ => _.Name == "FooImplB"));
 
             Assert.Single(i.PossibleTypes, _ => _ == implA);
             Assert.Single(i.PossibleTypes, _ => _ == implB);

@@ -41,8 +41,8 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Theory]
-        [InlineData(typeof(FooA), "type FooA { }")]
-        [InlineData(typeof(FooB), "type FooB { }")]
+        [InlineData(typeof(FooA), "type FooA { id: ID }")]
+        [InlineData(typeof(FooB), "type FooB { id: ID }")]
         public void DefaultTypeResolvesCorrectlyTest(Type objectType, string typeDefinitions)
         {
             var materializer = CreateMaterializer(typeDefinitions);
@@ -92,8 +92,8 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void MappedTypesReadCorrectlyTest()
         {
             var materializer = CreateMaterializer(@"
-                type FooA { }
-                type FooB { }");
+                type FooA { id: ID }
+                type FooB { id: ID }");
 
             var serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
