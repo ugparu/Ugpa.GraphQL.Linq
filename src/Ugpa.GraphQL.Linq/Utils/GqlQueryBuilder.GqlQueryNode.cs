@@ -48,7 +48,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                     var main = group.First();
                     foreach (var other in group.Skip(1))
                     {
-                        if (main.GraphType != other.GraphType)
+                        if (!Equals(main.GraphType, other.GraphType))
                             throw new System.InvalidOperationException();
 
                         foreach (var child in other.Children)
