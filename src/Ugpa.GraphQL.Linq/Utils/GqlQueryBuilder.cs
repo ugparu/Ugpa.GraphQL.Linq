@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using GraphQL.Types;
+using Ugpa.GraphQL.Linq.Properties;
 
 namespace Ugpa.GraphQL.Linq.Utils
 {
@@ -19,10 +20,10 @@ namespace Ugpa.GraphQL.Linq.Utils
             => ((Func<IQueryable<int>, int, IQueryable<int>>)QueryableExtensions.Where).Method.GetGenericMethodDefinition());
 
         private static readonly Lazy<MethodInfo> include = new Lazy<MethodInfo>(()
-            => ((Func<IQueryable<int>, Expression<Func<int, int>>, IQueryable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
+            => ((Func<IQueryable<int>, Expression<Func<int, object>>, IQueryable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
 
         private static readonly Lazy<MethodInfo> includeEnum = new Lazy<MethodInfo>(()
-            => ((Func<IEnumerable<int>, Func<int, int>, IEnumerable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
+            => ((Func<IEnumerable<int>, Func<int, object>, IEnumerable<int>>)QueryableExtensions.Include).Method.GetGenericMethodDefinition());
 
         private readonly ISchema schema;
         private readonly IGraphTypeNameMapper graphTypeNameMapper;
@@ -159,7 +160,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             var complexGraphType =
                 field.ResolvedType as IComplexGraphType
                 ?? (field.ResolvedType as IProvideResolvedType)?.ResolvedType as IComplexGraphType
-                ?? throw new NotImplementedException();
+                ?? throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_FieldTypeIsNotComplexType, field.Name));
 
             return GetQueryNodeForComplexType(field.Name, nodeType, complexGraphType, field.Arguments, includeScalarFields, variablesResolver, variablesSource);
         }
@@ -183,7 +184,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             {
                 var scalarFields = complexGraphType.Fields.Where(_ =>
                     _.ResolvedType is ScalarGraphType ||
-                    _.ResolvedType is NonNullGraphType nn && nn.ResolvedType is ScalarGraphType);
+                    _.ResolvedType is IProvideResolvedType r && r.ResolvedType is ScalarGraphType);
 
                 foreach (var childField in scalarFields)
                     node.Children.Add(GqlQueryNode.FromField(childField, variablesResolver, variablesSource));

@@ -70,6 +70,15 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Поле &quot;{0}&quot; не является полем составного типа..
+        /// </summary>
+        internal static string GqlQueryBuilder_FieldTypeIsNotComplexType {
+            get {
+                return ResourceManager.GetString("GqlQueryBuilder_FieldTypeIsNotComplexType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Тип &quot;{0}&quot; отсутствует в схеме..
         /// </summary>
         internal static string GraphTypeMapper_TypeNotDefined {

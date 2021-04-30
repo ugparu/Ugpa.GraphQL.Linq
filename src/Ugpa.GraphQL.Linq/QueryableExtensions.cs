@@ -20,6 +20,7 @@ namespace Ugpa.GraphQL.Linq
             => source;
 
         public static IQueryable<TSource> Include<TSource, TResult>(this IQueryable<TSource> source, Expression<Func<TSource, TResult>> selector)
+            where TResult : class
         {
             return source.Provider.CreateQuery<TSource>(Expression.Call(
                 null,
@@ -28,6 +29,9 @@ namespace Ugpa.GraphQL.Linq
         }
 
         public static IEnumerable<TSource> Include<TSource, TResult>(this IEnumerable<TSource> source, Func<TSource, TResult> selector)
-            => source;
+            where TResult : class
+        {
+            return source;
+        }
     }
 }

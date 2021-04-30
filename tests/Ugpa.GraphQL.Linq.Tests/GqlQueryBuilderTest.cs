@@ -502,6 +502,24 @@ namespace Ugpa.GraphQL.Linq.Tests
                 queryText);
         }
 
+        [Fact]
+        public void ScalarCollectionFetchTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Product {
+                    remarks: [String]
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0].AsQueryable();
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { products { remarks } }", queryText);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
@@ -521,6 +539,8 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private class Product
         {
+            public int Id { get; }
+
             public ProductInfo ProductInfo { get; }
 
             public IEnumerable<DrawSchema> Schemas { get; }
