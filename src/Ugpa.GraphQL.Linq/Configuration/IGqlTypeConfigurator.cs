@@ -8,5 +8,7 @@ namespace Ugpa.GraphQL.Linq.Configuration
         IGqlTypeConfigurator<T> HasField<TProperty>(Expression<Func<T, TProperty>> field, string name);
 
         IGqlTypeConfigurator<T> HasTypeName(string typeName);
+
+        IGqlTypeConfigurator<T> ConstructWith(Func<T> factory);
     }
 }

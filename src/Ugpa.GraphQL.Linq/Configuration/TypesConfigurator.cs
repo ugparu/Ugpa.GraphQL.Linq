@@ -13,6 +13,7 @@ namespace Ugpa.GraphQL.Linq.Configuration
         }
 
         public IGqlTypesConfigurator Configure<T>(Action<IGqlTypeConfigurator<T>> configurator)
+            where T : class
         {
             fluentContext.Configure<T>(_ => configurator(new TypeConfigurator<T>(_)));
             return this;
