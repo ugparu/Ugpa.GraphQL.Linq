@@ -16,15 +16,17 @@ namespace Ugpa.GraphQL.Linq.Utils
     internal sealed class IntrospectionSchemaSource : ISchemaSource
     {
         private readonly Lazy<ISchema> schema;
+        private readonly Func<string, ScalarGraphType?>? scalarTypeResolver;
 
-        public IntrospectionSchemaSource(string endPoint)
-            : this(new GraphQLHttpClient(endPoint, new NewtonsoftJsonSerializer()))
+        public IntrospectionSchemaSource(string endPoint, Func<string, ScalarGraphType?>? scalarTypeResolver = null)
+            : this(new GraphQLHttpClient(endPoint, new NewtonsoftJsonSerializer()), scalarTypeResolver)
         {
         }
 
-        internal IntrospectionSchemaSource(IGraphQLClient client)
+        internal IntrospectionSchemaSource(IGraphQLClient client, Func<string, ScalarGraphType?>? scalarTypeResolver = null)
         {
             schema = new Lazy<ISchema>(() => InitSchema(client));
+            this.scalarTypeResolver = scalarTypeResolver;
         }
 
         public ISchema GetSchema()
@@ -101,12 +103,13 @@ namespace Ugpa.GraphQL.Linq.Utils
 
         private ScalarGraphType ResolveScalarGraphType(JObject type)
         {
-            return ((JValue)type["name"]!).Value! switch
+            var typeName = (string)((JValue)type["name"]!).Value!;
+            return typeName switch
             {
                 "Int" => new IntGraphType { Name = "Int" },
                 "Float" => new FloatGraphType { Name = "Float" },
                 "ID" => new IdGraphType { Name = "ID" },
-                _ => throw new InvalidOperationException()
+                _ => scalarTypeResolver?.Invoke(typeName) ?? throw new InvalidOperationException()
             };
         }
 

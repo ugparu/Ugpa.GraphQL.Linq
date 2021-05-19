@@ -3,6 +3,7 @@ using System.Linq;
 using GraphQL.Client.Abstractions;
 using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.Newtonsoft;
+using GraphQL.Types;
 using Newtonsoft.Json;
 using Ugpa.GraphQL.Linq.Configuration;
 using Ugpa.GraphQL.Linq.Utils;
@@ -25,6 +26,16 @@ namespace Ugpa.GraphQL.Linq
         /// <param name="endPoint">GraphQL endpoint url.</param>
         public GqlContext(string endPoint)
             : this(endPoint, new IntrospectionSchemaSource(endPoint))
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GqlContext"/> class with intospection schema source and custom scalar type resolver.
+        /// </summary>
+        /// <param name="endPoint">GraphQL endpoint url.</param>
+        /// <param name="scalarTypeResolver">Custom scalar type resolver.</param>
+        public GqlContext(string endPoint, Func<string, ScalarGraphType?> scalarTypeResolver)
+            : this(endPoint, new IntrospectionSchemaSource(endPoint, scalarTypeResolver ?? throw new ArgumentNullException(nameof(scalarTypeResolver))))
         {
         }
 
