@@ -53,7 +53,7 @@ namespace Ugpa.GraphQL.Linq
             var request = new GraphQLRequest
             {
                 Query = query,
-                Variables = variablesResolver.GetAllVariables().ToDictionary(_ => _.name, _ => _.value)
+                Variables = variablesResolver.GetAllVariables().ToDictionary(_ => _.Name, _ => _.Value)
             };
 
             var result = Task.Run(() => client.SendQueryAsync<JToken>(request, CancellationToken.None))
@@ -124,7 +124,7 @@ namespace Ugpa.GraphQL.Linq
                     {
                         throw new NotImplementedException();
                     }
-            };
+            }
         }
 
         private ConstantExpression RewriteConstantExpression(JToken data, IQueryable qq)

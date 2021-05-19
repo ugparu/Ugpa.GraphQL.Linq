@@ -9,16 +9,15 @@ namespace Ugpa.GraphQL.Linq.Utils
     {
         private const string VariableNameFormat = "linq_param_{0}";
 
-        private readonly Dictionary<object, Dictionary<string, (int index, IGraphType type, object value)>> variables =
-            new Dictionary<object, Dictionary<string, (int, IGraphType, object)>>();
+        private readonly Dictionary<object, Dictionary<string, (int Index, IGraphType Type, object Value)>> variables = new();
 
         private int varIndex = 0;
 
-        public IEnumerable<(string name, IGraphType type, object value)> GetAllVariables()
+        public IEnumerable<(string Name, IGraphType Type, object Value)> GetAllVariables()
         {
             return variables.Values
                 .SelectMany(_ => _.Values)
-                .Select(_ => (string.Format(VariableNameFormat, _.index), _.type, _.value));
+                .Select(_ => (string.Format(VariableNameFormat, _.Index), _.Type, _.Value));
         }
 
         public string GetArgumentVariableName(QueryArgument argument, object variablesSource)
@@ -36,7 +35,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 v1[argument.Name] = v2;
             }
 
-            return string.Format(VariableNameFormat, v2.index);
+            return string.Format(VariableNameFormat, v2.Index);
         }
 
         private object ResolveVariableValue(object variablesSource, string argumentName)

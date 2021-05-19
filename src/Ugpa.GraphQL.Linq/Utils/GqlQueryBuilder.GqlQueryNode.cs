@@ -25,6 +25,12 @@ namespace Ugpa.GraphQL.Linq.Utils
                 GraphType = graphType;
             }
 
+            public enum NodeType
+            {
+                Field,
+                Subtype
+            }
+
             public string Name { get; }
 
             public IGraphType GraphType { get; }
@@ -100,7 +106,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 var vars = variablesResolver.GetAllVariables().ToArray();
                 if (vars.Any())
                 {
-                    var args = vars.Select(_ => $"${_.name}: {_.type}").ToArray();
+                    var args = vars.Select(_ => $"${_.Name}: {_.Type}").ToArray();
                     var argsString = string.Join(", ", args);
                     builder.Append($"({argsString})");
                 }
@@ -167,12 +173,6 @@ namespace Ugpa.GraphQL.Linq.Utils
                 }
 
                 queryBuilder.AppendLine($"{indent}}}");
-            }
-
-            public enum NodeType
-            {
-                Field,
-                Subtype
             }
         }
     }

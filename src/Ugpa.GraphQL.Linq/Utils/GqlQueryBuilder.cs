@@ -43,7 +43,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             return query;
         }
 
-        private (GqlQueryNode root, GqlQueryNode head) GetQueryNode(Expression expression, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
+        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNode(Expression expression, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
         {
             return expression switch
             {
@@ -60,7 +60,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             };
         }
 
-        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromConstant(ConstantExpression constant, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
+        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNodeFromConstant(ConstantExpression constant, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
         {
             if (constant.Value is IQueryable queryable)
             {
@@ -86,7 +86,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromMethodCall(MethodCallExpression methodCall, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
+        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNodeFromMethodCall(MethodCallExpression methodCall, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
         {
             if (methodCall.Method.IsGenericMethod)
             {
@@ -95,16 +95,16 @@ namespace Ugpa.GraphQL.Linq.Utils
                 if (methodDefinition == select.Value || methodDefinition == selectMany.Value)
                 {
                     var node = GetQueryNode(methodCall.Arguments[0], owner, false, variablesResolver, variablesSource);
-                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.head.GraphType, includeScalar, variablesResolver, variablesSource);
-                    node.head.Children.Add(subNode.root);
-                    return (node.root, subNode.head);
+                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.Head.GraphType, includeScalar, variablesResolver, variablesSource);
+                    node.Head.Children.Add(subNode.Root);
+                    return (node.Root, subNode.Head);
                 }
                 else if (methodDefinition == include.Value || methodDefinition == includeEnum.Value)
                 {
                     var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesResolver, variablesSource);
-                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.root.GraphType, includeScalar, variablesResolver, variablesSource);
-                    node.root.Children.Add(subNode.root);
-                    return (node.root, subNode.head);
+                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.Root.GraphType, includeScalar, variablesResolver, variablesSource);
+                    node.Root.Children.Add(subNode.Root);
+                    return (node.Root, subNode.Head);
                 }
                 else if (methodDefinition == whereParams.Value)
                 {
@@ -123,8 +123,11 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        private (GqlQueryNode root, GqlQueryNode head) GetQueryNodeFromMember(MemberExpression member, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver)
+        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNodeFromMember(MemberExpression member, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver)
         {
+            if (owner is null)
+                throw new ArgumentNullException(nameof(owner));
+
             GqlQueryNode GetQueryNodeFromCurrentMember(IComplexGraphType ownerType, GqlQueryNode.NodeType nodeType)
             {
                 var field = ownerType.Fields.FirstOrDefault(_ => _.Name.Equals(member.Member.Name, StringComparison.OrdinalIgnoreCase))
@@ -144,9 +147,9 @@ namespace Ugpa.GraphQL.Linq.Utils
             else if (member.Expression is MemberExpression nestedMember)
             {
                 var nestedNode = GetQueryNodeFromMember(nestedMember, owner, false, variablesResolver);
-                var node = GetQueryNodeFromCurrentMember((IComplexGraphType)nestedNode.head.GraphType, GqlQueryNode.NodeType.Field);
-                nestedNode.root.Children.Add(node);
-                return (nestedNode.root, node);
+                var node = GetQueryNodeFromCurrentMember((IComplexGraphType)nestedNode.Head.GraphType, GqlQueryNode.NodeType.Field);
+                nestedNode.Root.Children.Add(node);
+                return (nestedNode.Root, node);
             }
             else
             {
@@ -248,4 +251,3 @@ namespace Ugpa.GraphQL.Linq.Utils
         }
     }
 }
-

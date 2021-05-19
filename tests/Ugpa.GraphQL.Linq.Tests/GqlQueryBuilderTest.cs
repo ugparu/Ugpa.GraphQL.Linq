@@ -286,8 +286,8 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.Equal("query($linq_param_0: Int!) { schemas(productId: $linq_param_0) { id name } }", queryText);
 
             var variable = Assert.Single(variablesResolver.GetAllVariables());
-            Assert.Equal("linq_param_0", variable.name);
-            Assert.Equal(111, variable.value);
+            Assert.Equal("linq_param_0", variable.Name);
+            Assert.Equal(111, variable.Value);
         }
 
         [Fact]
@@ -320,8 +320,8 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.Equal("query($linq_param_0: Int!) { product(productId: $linq_param_0) { productInfo { title version } } }", queryText);
 
             var variable = Assert.Single(variablesResolver.GetAllVariables());
-            Assert.Equal("linq_param_0", variable.name);
-            Assert.Equal(111, variable.value);
+            Assert.Equal("linq_param_0", variable.Name);
+            Assert.Equal(111, variable.Value);
         }
 
         [Fact]
