@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <LangVersion>9</LangVersion>
+    <Nullable>enable</Nullable>
     <BaseOutputPath>$(SolutionDir)bin/</BaseOutputPath>
     <BaseIntermediateOutputPath>$(SolutionDir)obj/</BaseIntermediateOutputPath>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

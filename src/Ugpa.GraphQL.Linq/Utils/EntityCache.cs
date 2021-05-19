@@ -30,7 +30,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        public object GetEntity(JObject tokent, Type objectType, out string id)
+        public object? GetEntity(JObject tokent, Type objectType, out string? id)
         {
             var gType = (IComplexGraphType)graphTypeMapper.GetGraphType(objectType) ?? throw new InvalidOperationException();
 
@@ -42,7 +42,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             id = idFields.Length switch
             {
                 0 => null,
-                1 => (string)((JValue)idFields[0].p.Value).Value,
+                1 => (string?)((JValue)idFields[0].p.Value).Value,
                 _ => throw new NotImplementedException()
             };
 

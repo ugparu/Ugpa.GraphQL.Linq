@@ -43,7 +43,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             return query;
         }
 
-        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNode(Expression expression, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
+        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNode(Expression expression, IComplexGraphType? owner, bool includeScalar, VariablesResolver variablesResolver, object? variablesSource)
         {
             return expression switch
             {
@@ -55,12 +55,12 @@ namespace Ugpa.GraphQL.Linq.Utils
                     _ => throw new NotImplementedException()
                 },
                 LambdaExpression lambda => GetQueryNode(lambda.Body, owner, includeScalar, variablesResolver, variablesSource),
-                MemberExpression member => GetQueryNodeFromMember(member, owner, includeScalar, variablesResolver),
+                MemberExpression member => GetQueryNodeFromMember(member, owner!, includeScalar, variablesResolver),
                 _ => throw new NotImplementedException()
             };
         }
 
-        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNodeFromConstant(ConstantExpression constant, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
+        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNodeFromConstant(ConstantExpression constant, bool includeScalar, VariablesResolver variablesResolver, object? variablesSource)
         {
             if (constant.Value is IQueryable queryable)
             {
@@ -86,7 +86,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNodeFromMethodCall(MethodCallExpression methodCall, IComplexGraphType owner, bool includeScalar, VariablesResolver variablesResolver, object variablesSource)
+        private (GqlQueryNode Root, GqlQueryNode Head) GetQueryNodeFromMethodCall(MethodCallExpression methodCall, IComplexGraphType? owner, bool includeScalar, VariablesResolver variablesResolver, object? variablesSource)
         {
             if (methodCall.Method.IsGenericMethod)
             {
@@ -158,7 +158,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        private GqlQueryNode GetQueryNodeForComplexType(FieldType field, GqlQueryNode.NodeType nodeType, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
+        private GqlQueryNode GetQueryNodeForComplexType(FieldType field, GqlQueryNode.NodeType nodeType, bool includeScalarFields, VariablesResolver variablesResolver, object? variablesSource)
         {
             var complexGraphType =
                 field.ResolvedType as IComplexGraphType
@@ -168,7 +168,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             return GetQueryNodeForComplexType(field.Name, nodeType, complexGraphType, field.Arguments, includeScalarFields, variablesResolver, variablesSource);
         }
 
-        private GqlQueryNode GetQueryNodeForComplexType(string name, GqlQueryNode.NodeType nodeType, IComplexGraphType complexGraphType, IEnumerable<QueryArgument> arguments, bool includeScalarFields, VariablesResolver variablesResolver, object variablesSource)
+        private GqlQueryNode GetQueryNodeForComplexType(string name, GqlQueryNode.NodeType nodeType, IComplexGraphType complexGraphType, IEnumerable<QueryArgument> arguments, bool includeScalarFields, VariablesResolver variablesResolver, object? variablesSource)
         {
             var node = new GqlQueryNode(name, nodeType, complexGraphType, arguments, variablesResolver, variablesSource);
 
@@ -218,7 +218,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 ?? throw new InvalidOperationException(string.Format(Resources.GraphTypeMapper_TypeNotDefined, gTypeName));
         }
 
-        private FieldType GetBestFitQueryField(IGraphType graphType, object variablesSource)
+        private FieldType GetBestFitQueryField(IGraphType graphType, object? variablesSource)
         {
             var fields = schema.Query.Fields
                 .Where(_ =>

@@ -60,7 +60,7 @@ namespace Ugpa.GraphQL.Linq
                 .GetAwaiter()
                 .GetResult();
 
-            expression = RewriteExpression(expression, result.Data[entryPoint]);
+            expression = RewriteExpression(expression, result.Data[entryPoint])!;
 
             return expression switch
             {
@@ -73,7 +73,7 @@ namespace Ugpa.GraphQL.Linq
         public TResult Execute<TResult>(Expression expression)
             => (TResult)Execute(expression);
 
-        private Expression RewriteExpression(Expression expression, JToken data)
+        private Expression? RewriteExpression(Expression expression, JToken? data)
         {
             switch (expression)
             {
@@ -127,7 +127,7 @@ namespace Ugpa.GraphQL.Linq
             }
         }
 
-        private ConstantExpression RewriteConstantExpression(JToken data, IQueryable qq)
+        private ConstantExpression RewriteConstantExpression(JToken? data, IQueryable qq)
         {
             var list = Materialize(data, qq.ElementType);
             var newQuery = ((Func<IEnumerable<int>, IQueryable<int>>)Queryable.AsQueryable).Method
@@ -138,7 +138,7 @@ namespace Ugpa.GraphQL.Linq
             return Expression.Constant(newQuery);
         }
 
-        private object Materialize(JToken data, Type type)
+        private object Materialize(JToken? data, Type type)
         {
             var listType = typeof(List<>).MakeGenericType(type);
             if (data is null)
@@ -147,7 +147,7 @@ namespace Ugpa.GraphQL.Linq
             }
             else if (data is JArray jArray)
             {
-                return jArray.ToObject(listType, serializer);
+                return jArray.ToObject(listType, serializer)!;
             }
             else if (data is JObject jObject)
             {

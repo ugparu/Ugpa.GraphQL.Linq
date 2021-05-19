@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using GraphQL.Types;
@@ -12,10 +13,13 @@ namespace Ugpa.GraphQL.Linq.Utils
             private readonly NodeType type;
             private readonly IEnumerable<QueryArgument> arguments;
             private readonly VariablesResolver variablesResolver;
-            private readonly object variableValuesSource;
+            private readonly object? variableValuesSource;
 
-            public GqlQueryNode(string name, NodeType type, IGraphType graphType, IEnumerable<QueryArgument> arguments, VariablesResolver variablesResolver, object variableValuesSource)
+            public GqlQueryNode(string name, NodeType type, IGraphType graphType, IEnumerable<QueryArgument> arguments, VariablesResolver variablesResolver, object? variableValuesSource)
             {
+                if (arguments.Any() && variableValuesSource is null)
+                    throw new InvalidOperationException();
+
                 this.type = type;
                 this.arguments = arguments;
                 this.variablesResolver = variablesResolver;
@@ -37,7 +41,7 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             public ICollection<GqlQueryNode> Children { get; } = new List<GqlQueryNode>();
 
-            public static GqlQueryNode FromField(FieldType field, VariablesResolver variablesResolver, object variableValuesSource)
+            public static GqlQueryNode FromField(FieldType field, VariablesResolver variablesResolver, object? variableValuesSource)
             {
                 var graphType = field.ResolvedType is IProvideResolvedType provideResolvedType
                     ? provideResolvedType.ResolvedType
@@ -146,7 +150,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                     var args = arguments
                         .Select(argument =>
                         {
-                            var varName = variablesResolver.GetArgumentVariableName(argument, variableValuesSource);
+                            var varName = variablesResolver.GetArgumentVariableName(argument, variableValuesSource!);
                             return $"{argument.Name}: ${varName}";
                         })
                         .ToArray();

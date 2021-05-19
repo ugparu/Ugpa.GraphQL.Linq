@@ -24,7 +24,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 !typeof(IEnumerable).IsAssignableFrom(objectType);
         }
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (existingValue is null)
             {
@@ -38,9 +38,9 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException();
         }
 
         private object ReadObject(JsonReader reader, JsonObjectContract objectContract, JsonSerializer serializer)
@@ -102,7 +102,8 @@ namespace Ugpa.GraphQL.Linq.Utils
             if (token.Children<JProperty>().FirstOrDefault(_ => _.Name == "__typename") is JProperty typeToken)
             {
                 typeToken.Remove();
-                var typeName = (string)((JValue)typeToken.Value).Value;
+                var typeName = (string?)((JValue)typeToken.Value).Value
+                    ?? throw new InvalidOperationException();
 
                 var explicitObjectType = binder.BindToType(null, typeName)
                     ?? throw new InvalidOperationException(string.Format(Resources.GqlMaterializer_UnableBindToType, typeName));
