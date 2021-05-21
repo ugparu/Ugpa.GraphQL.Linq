@@ -172,7 +172,7 @@ namespace Ugpa.GraphQL.Linq.Utils
         {
             var node = new GqlQueryNode(name, nodeType, complexGraphType, arguments, variablesResolver, variablesSource);
 
-            if (complexGraphType is IAbstractGraphType)
+            if (complexGraphType is IAbstractGraphType && nodeType != GqlQueryNode.NodeType.Subtype)
             {
                 node.Children.Add(new GqlQueryNode(
                     "__typename",
@@ -189,12 +189,34 @@ namespace Ugpa.GraphQL.Linq.Utils
                     _.ResolvedType is ScalarGraphType ||
                     _.ResolvedType is IProvideResolvedType r && r.ResolvedType is ScalarGraphType);
 
+                if (complexGraphType is IImplementInterfaces implementInterfaces && nodeType == GqlQueryNode.NodeType.Subtype)
+                {
+                    var interfaceFields = implementInterfaces.ResolvedInterfaces
+                        .SelectMany(_ => _.Fields)
+                        .Join(scalarFields, _ => _.Name, _ => _.Name, (_, f) => f)
+                        .ToArray();
+
+                    scalarFields = scalarFields.Except(interfaceFields);
+                }
+
                 foreach (var childField in scalarFields)
                     node.Children.Add(GqlQueryNode.FromField(childField, variablesResolver, variablesSource));
             }
 
-            if (complexGraphType is IAbstractGraphType abstractGraphType)
+            if (complexGraphType is IAbstractGraphType abstractGraphType && nodeType != GqlQueryNode.NodeType.Subtype)
             {
+                foreach (var interfaceType in abstractGraphType.PossibleTypes.SelectMany(_ => _.ResolvedInterfaces).Where(_ => _ != abstractGraphType).Distinct())
+                {
+                    node.Children.Add(GetQueryNodeForComplexType(
+                        string.Empty,
+                        GqlQueryNode.NodeType.Subtype,
+                        interfaceType,
+                        Enumerable.Empty<QueryArgument>(),
+                        includeScalarFields,
+                        variablesResolver,
+                        variablesSource));
+                }
+
                 foreach (var posibleType in abstractGraphType.PossibleTypes)
                 {
                     node.Children.Add(GetQueryNodeForComplexType(

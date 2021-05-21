@@ -520,6 +520,49 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.Equal("query { products { remarks } }", queryText);
         }
 
+        [Fact]
+        public void MultipleInterfacesImplementationTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface DataFlowSystemItem {
+                    id: ID
+                }
+                interface Module {
+                    name: String!
+                }
+                type ModuleA implements DataFlowSystemItem & Module {
+                    id: ID
+                    name: String!
+                    boolValue: Boolean!
+                }
+                type ModuleB implements DataFlowSystemItem & Module {
+                    id: ID
+                    name: String!
+                    intValue: Int!
+                }
+                type Query {
+                    items: [DataFlowSystemItem]
+                    modules: [Module]
+                }",
+                cfg =>
+                {
+                    cfg.Types.For("DataFlowSystemItem").ResolveType = _ => throw new NotSupportedException();
+                    cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException();
+                });
+
+            var query1 = new DataFlowSystemItem[0].AsQueryable();
+            var queryText1 = queryBuilder.BuildQuery(query1.Expression, new VariablesResolver(), out _);
+            queryText1 = PostProcessQuery(queryText1);
+
+            Assert.Equal("query { items { __typename id ... on Module { name } ... on ModuleA { boolValue } ... on ModuleB { intValue } } }", queryText1);
+
+            var query2 = new Module[0].AsQueryable();
+            var queryText2 = queryBuilder.BuildQuery(query2.Expression, new VariablesResolver(), out _);
+            queryText2 = PostProcessQuery(queryText2);
+
+            Assert.Equal("query { modules { __typename name ... on DataFlowSystemItem { id } ... on ModuleA { boolValue } ... on ModuleB { intValue } } }", queryText2);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
@@ -580,6 +623,15 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private class TextboxFrame
         {
+        }
+
+        private abstract class DataFlowSystemItem
+        {
+        }
+
+        private abstract class Module : DataFlowSystemItem
+        {
+            public Module[] Submodules { get; }
         }
     }
 }

@@ -123,7 +123,7 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             public override string ToString()
             {
-                var builder = new StringBuilder(Name);
+                var builder = new StringBuilder($"[{type}]: {Name}");
 
                 if (arguments.Any())
                     builder.Append($"({string.Join(", ", arguments.Select(_ => _.Name))})");
