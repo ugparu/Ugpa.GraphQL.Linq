@@ -12,6 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Miscellaneous", "Miscellane
 		.editorconfig = .editorconfig
 		src\Directory.Build.props = src\Directory.Build.props
 		stylecop.json = stylecop.json
+		src\Ugpa.GraphQL.Linq.nuspec = src\Ugpa.GraphQL.Linq.nuspec
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{17465D21-8CEA-4CF8-8A6F-F3589426755B}"
