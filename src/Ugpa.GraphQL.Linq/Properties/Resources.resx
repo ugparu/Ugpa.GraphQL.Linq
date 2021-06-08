@@ -117,13 +117,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="GqlMaterializer_TypeIsNotAssignable" xml:space="preserve">
+    <value>Type "{0}" is not subtype of "{1}".</value>
+  </data>
   <data name="GqlMaterializer_UnableBindToType" xml:space="preserve">
-    <value>Не удалось сопоставить тип данных для GraphQL типа "{0}".</value>
+    <value>Can`'t bind GraphQL type "{0}" to data type.</value>
   </data>
   <data name="GqlQueryBuilder_FieldTypeIsNotComplexType" xml:space="preserve">
-    <value>Поле "{0}" не является полем составного типа.</value>
+    <value>Field "{0}" is not complex type field.</value>
   </data>
   <data name="GraphTypeMapper_TypeNotDefined" xml:space="preserve">
-    <value>Тип "{0}" отсутствует в схеме.</value>
+    <value>Type "{0}" is not defined in schema.</value>
   </data>
 </root>

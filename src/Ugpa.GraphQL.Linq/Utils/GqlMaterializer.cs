@@ -109,7 +109,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                     ?? throw new InvalidOperationException(string.Format(Resources.GqlMaterializer_UnableBindToType, typeName));
 
                 if (!objectType.IsAssignableFrom(explicitObjectType))
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException(string.Format(Resources.GqlMaterializer_TypeIsNotAssignable, explicitObjectType, objectType));
 
                 objectType = explicitObjectType;
                 return true;

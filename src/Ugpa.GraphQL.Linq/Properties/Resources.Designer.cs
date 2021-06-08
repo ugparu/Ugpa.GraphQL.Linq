@@ -61,7 +61,16 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Не удалось сопоставить тип данных для GraphQL типа &quot;{0}&quot;..
+        ///   Looks up a localized string similar to Type &quot;{0}&quot; is not subtype of &quot;{1}&quot;..
+        /// </summary>
+        internal static string GqlMaterializer_TypeIsNotAssignable {
+            get {
+                return ResourceManager.GetString("GqlMaterializer_TypeIsNotAssignable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Can`&apos;t bind GraphQL type &quot;{0}&quot; to data type..
         /// </summary>
         internal static string GqlMaterializer_UnableBindToType {
             get {
@@ -70,7 +79,7 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Поле &quot;{0}&quot; не является полем составного типа..
+        ///   Looks up a localized string similar to Field &quot;{0}&quot; is not complex type field..
         /// </summary>
         internal static string GqlQueryBuilder_FieldTypeIsNotComplexType {
             get {
@@ -79,7 +88,7 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Тип &quot;{0}&quot; отсутствует в схеме..
+        ///   Looks up a localized string similar to Type &quot;{0}&quot; is not defined in schema..
         /// </summary>
         internal static string GraphTypeMapper_TypeNotDefined {
             get {

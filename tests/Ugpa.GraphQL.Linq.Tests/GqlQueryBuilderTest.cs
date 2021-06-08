@@ -563,6 +563,29 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.Equal("query { modules { __typename name ... on DataFlowSystemItem { id } ... on ModuleA { boolValue } ... on ModuleB { intValue } } }", queryText2);
         }
 
+        [Fact]
+        public void RecursiveQueryTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module {
+                    name: String!
+                    submodules: [Module]
+                }
+                type Query {
+                    modules: [Module]
+                }");
+
+            var query = new Module[0].AsQueryable()
+                .Include(m => m.Submodules)
+                .Include(m => m.Submodules.Include(mm => mm.Submodules))
+                .Include(m => m.Submodules.Include(mm => mm.Submodules.Include(mmm => mmm.Submodules)));
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { modules { name submodules { name submodules { name submodules { name } } } } }", queryText);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
