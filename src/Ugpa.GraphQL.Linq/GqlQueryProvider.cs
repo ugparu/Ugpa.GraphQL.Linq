@@ -102,7 +102,7 @@ namespace Ugpa.GraphQL.Linq
                     }
                 case LambdaExpression lambda:
                     {
-                        return Expression.Lambda(RewriteExpression(lambda.Body, data), lambda.Parameters);
+                        return Expression.Lambda(lambda.Type, RewriteExpression(lambda.Body, data), lambda.Parameters);
                     }
                 case MemberExpression member:
                     {

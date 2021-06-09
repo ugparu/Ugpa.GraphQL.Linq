@@ -57,19 +57,48 @@ namespace Ugpa.GraphQL.Linq
         }
 
         /// <summary>
-        /// Includes additional data based on selector. Doesn't change source <see cref="IEnumerable{T}"/>.
+        /// Includes additional data based on selector. Doesn't change source <see cref="IEnumerable{TSource}"/>.
         /// </summary>
         /// <typeparam name="TSource">Element type.</typeparam>
         /// <typeparam name="TResult">Additional data type.</typeparam>
-        /// <param name="source">Source <see cref="IEnumerable{T}"/>.</param>
+        /// <param name="source">Source <see cref="IEnumerable{TSource}"/>.</param>
         /// <param name="selector">Additional data selector delegate.</param>
-        /// <returns>Source instance of <see cref="IEnumerable{T}"/>.</returns>
+        /// <returns>Source instance of <see cref="IEnumerable{TSource}"/>.</returns>
         /// <remarks>
-        /// This method used only for building GraphQL query. It doesn't change source <see cref="IEnumerable{T}"/>.
+        /// This method used only for building GraphQL query. It doesn't change source <see cref="IEnumerable{TSource}"/>.
         /// Also this method is used by enumerable rewriter.
         /// </remarks>
         public static IEnumerable<TSource> Include<TSource, TResult>(this IEnumerable<TSource> source, Func<TSource, TResult> selector)
             where TResult : class
+        {
+            return source;
+        }
+
+        /// <summary>
+        /// Declares query fragment.
+        /// </summary>
+        /// <typeparam name="TSource">Query element type.</typeparam>
+        /// <typeparam name="TFrag">Fragment element type.</typeparam>
+        /// <param name="source">Source <see cref="IQueryable{TSource}"/>.</param>
+        /// <param name="fragment">Fragment <see cref="IQueryable{TFrag}"/>.</param>
+        /// <returns>New instance of <see cref="IQueryable{TSource}"/> with configured fragment.</returns>
+        public static IQueryable<TSource> UsingFragment<TSource, TFrag>(this IQueryable<TSource> source, Expression<Func<IQueryable<TFrag>, object>> fragment)
+        {
+            return source.Provider.CreateQuery<TSource>(Expression.Call(
+                null,
+                ((MethodInfo)MethodBase.GetCurrentMethod()).MakeGenericMethod(typeof(TSource), typeof(TFrag)),
+                new Expression[] { source.Expression, fragment }));
+        }
+
+        /// <summary>
+        /// Declares query fragment. Doesn't change source <see cref="IEnumerable{TSource}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">Query element type.</typeparam>
+        /// <typeparam name="TFrag">Fragment element type.</typeparam>
+        /// <param name="source">Source <see cref="IEnumerable{TSource}"/>.</param>
+        /// <param name="fragment">Fragment <see cref="IEnumerable{TFrag}"/>.</param>
+        /// <returns>Source instance of <see cref="IEnumerable{TSource}"/>.</returns>
+        public static IEnumerable<TSource> UsingFragment<TSource, TFrag>(this IEnumerable<TSource> source, Func<IQueryable<TFrag>, object> fragment)
         {
             return source;
         }

@@ -575,7 +575,8 @@ namespace Ugpa.GraphQL.Linq.Tests
                     modules: [Module]
                 }");
 
-            var query = new Module[0].AsQueryable()
+            var query = new Module[0]
+                .AsQueryable()
                 .Include(m => m.Submodules)
                 .Include(m => m.Submodules.Include(mm => mm.Submodules))
                 .Include(m => m.Submodules.Include(mm => mm.Submodules.Include(mmm => mmm.Submodules)));
@@ -584,6 +585,84 @@ namespace Ugpa.GraphQL.Linq.Tests
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query { modules { name submodules { name submodules { name submodules { name } } } } }", queryText);
+        }
+
+        [Fact]
+        public void SimpleFragmentUsageTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module {
+                    name: String!
+                }
+                type Query {
+                    modules: [Module]
+                }");
+
+            var query = new Module[0]
+                .AsQueryable()
+                .UsingFragment((IQueryable<Module> fullModule) => fullModule);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { modules { ... fullModule } } fragment fullModule on Module { name }",
+                queryText);
+        }
+
+        [Fact]
+        public void FragmentWithSubtypesUsageTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface Module {
+                    name: String!
+                }
+                type ModuleA implements Module {
+                    name: String!
+                    a: Int!
+                }
+                type ModuleB implements Module {
+                    name: String!
+                    b: Int!
+                }
+                type Query {
+                    modules: [Module]
+                }",
+                cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException());
+
+            var query = new Module[0].AsQueryable()
+                .UsingFragment((IQueryable<Module> fullModule) => fullModule);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { modules { ... fullModule } } fragment fullModule on Module { __typename name ... on ModuleA { a } ... on ModuleB { b } }",
+                queryText);
+        }
+
+        [Fact]
+        public void FragmentRecursiveUsageTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module {
+                    name: String!
+                    submodules: [Module]
+                }
+                type Query {
+                    modules: [Module]
+                }");
+
+            var query = new Module[0].AsQueryable()
+                .Include(_ => _.Submodules)
+                .UsingFragment((IQueryable<Module> fullModule) => fullModule);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { modules { ... fullModule submodules { ... fullModule } } } fragment fullModule on Module { name }",
+                queryText);
         }
 
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
