@@ -503,6 +503,29 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void NestedReferenceCollectionIncludeTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module {
+                    name: String!
+                    child: Module
+                    submodules: [Module]
+                }
+                type Query {
+                    modules: [Module]
+                }");
+
+            var query = new Module[0]
+                .AsQueryable()
+                .Include(m0 => m0.Child.Submodules.Include(m1 => m1.Child));
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { modules { name child { submodules { name child { name } } } } }", queryText);
+        }
+
+        [Fact]
         public void ScalarCollectionFetchTest()
         {
             var queryBuilder = GetQueryBuilder(@"
@@ -577,6 +600,28 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var query = new Module[0]
                 .AsQueryable()
+                .Include(m => m.Submodules.Include(mm => mm.Submodules.Include(mmm => mmm.Submodules)));
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { modules { name submodules { name submodules { name submodules { name } } } } }", queryText);
+        }
+
+        [Fact]
+        public void MultipleRecursiveQueryTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module {
+                    name: String!
+                    submodules: [Module]
+                }
+                type Query {
+                    modules: [Module]
+                }");
+
+            var query = new Module[0]
+                .AsQueryable()
                 .Include(m => m.Submodules)
                 .Include(m => m.Submodules.Include(mm => mm.Submodules))
                 .Include(m => m.Submodules.Include(mm => mm.Submodules.Include(mmm => mmm.Submodules)));
@@ -585,6 +630,34 @@ namespace Ugpa.GraphQL.Linq.Tests
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("query { modules { name submodules { name submodules { name submodules { name } } } } }", queryText);
+        }
+
+        [Fact]
+        public void RecursiveQueryWithCastTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface DataFlowSystemItem {
+                    name: String!
+                }
+                type Module implements DataFlowSystemItem {
+                    name: String!
+                    submodules: [Module]
+                }
+                type Query {
+                    items: [DataFlowSystemItem]
+                }",
+                cfg => cfg.Types.For("DataFlowSystemItem").ResolveType = _ => throw new NotSupportedException());
+
+            var query = new DataFlowSystemItem[0]
+                .AsQueryable()
+                .Include(i => ((Module)i).Submodules.Include(m => m.Submodules));
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { items { __typename name ... on Module { submodules { name submodules { name } } } } }",
+                queryText);
         }
 
         [Fact]
@@ -734,6 +807,8 @@ namespace Ugpa.GraphQL.Linq.Tests
         private abstract class Module : DataFlowSystemItem
         {
             public Module[] Submodules { get; }
+
+            public Module Child { get; }
         }
     }
 }
