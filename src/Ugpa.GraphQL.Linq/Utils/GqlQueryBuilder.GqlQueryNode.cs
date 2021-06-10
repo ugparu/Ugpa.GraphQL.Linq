@@ -143,16 +143,6 @@ namespace Ugpa.GraphQL.Linq.Utils
                     }
                 }
 
-                // Removing empty nodes.
-                foreach (var child in Children.ToArray())
-                {
-                    child.Prune(fragments.Where(f => f != child).ToArray());
-                    if (child.GraphType is IComplexGraphType && !child.Children.Any())
-                    {
-                        Children.Remove(child);
-                    }
-                }
-
                 // Applying fragments.
                 if (fragments.FirstOrDefault(_ => _.GraphType == GraphType) is GqlQueryNode fragment && this != fragment)
                 {
@@ -162,6 +152,14 @@ namespace Ugpa.GraphQL.Linq.Utils
                     foreach (var child in Children.Join(fragment.Children, _ => _.Name, _ => _.Name, (c, fc) => c).ToArray())
                         Children.Remove(child);
                 }
+
+                // Pruning children
+                foreach (var child in Children.ToArray())
+                    child.Prune(fragments.Where(f => f != child).ToArray());
+
+                // Removing empty nodes.
+                foreach (var child in Children.Where(_ => _.GraphType is IComplexGraphType && !_.Children.Any()).ToArray())
+                    Children.Remove(child);
             }
 
             private void CollectFragments(HashSet<GqlQueryNode> fragments, int depth)

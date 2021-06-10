@@ -790,6 +790,48 @@ namespace Ugpa.GraphQL.Linq.Tests
                 queryText);
         }
 
+        [Fact]
+        public void FragmentUsageWithMultipleInterfacesImplementationTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface DataFlowSystemItem {
+                    id: ID
+                }
+                interface Module {
+                    name: String!
+                }
+                type ModuleA implements DataFlowSystemItem & Module {
+                    id: ID
+                    name: String!
+                    a: Int!
+                }
+                type ModuleB implements DataFlowSystemItem & Module {
+                    id: ID
+                    name: String!
+                    b: Int!
+                }
+                type Query {
+                    items: [DataFlowSystemItem]
+                }",
+                cfg =>
+                {
+                    cfg.Types.For("DataFlowSystemItem").ResolveType = _ => throw new NotSupportedException();
+                    cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException();
+                });
+
+            var query = new DataFlowSystemItem[0]
+                .AsQueryable()
+                .UsingFragment((IQueryable<Module> fullModule) => fullModule);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { items { __typename id ... on Module { ... fullModule } ... on ModuleA { a } ... on ModuleB { b } } } " +
+                "fragment fullModule on Module { __typename name ... on DataFlowSystemItem { id } ... on ModuleA { a } ... on ModuleB { b } }",
+                queryText);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
