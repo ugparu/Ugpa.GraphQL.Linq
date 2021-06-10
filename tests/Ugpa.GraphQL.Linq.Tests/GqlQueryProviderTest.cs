@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using GraphQL.Client.Abstractions;
 using GraphQL.Types;
 using Moq;
@@ -28,7 +29,10 @@ namespace Ugpa.GraphQL.Linq.Tests
                     objects: [Object]
                 }");
 
-            queryBuilder = new GqlQueryBuilder(schema, mapper.Object);
+            queryBuilder = new GqlQueryBuilder(
+                schema,
+                mapper.Object,
+                Mock.Of<IMemberNameMapper>(_ => _.GetFieldName == (Func<MemberInfo, string>)(m => m.Name)));
 
             client = clientFixture.CreateClientFor(
                 schema,
