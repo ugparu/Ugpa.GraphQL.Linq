@@ -762,6 +762,34 @@ namespace Ugpa.GraphQL.Linq.Tests
                 queryText);
         }
 
+        [Fact]
+        public void FragmentUsageOnNestedFieldTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module {
+                    name: String!
+                    child: Module
+                }
+                type ModuleCollection {
+                    modules: [Module]
+                }
+                type Query {
+                    modules: ModuleCollection!
+                }");
+
+            var query = new ModuleCollection[0]
+                .AsQueryable()
+                .Include(_ => _.Modules)
+                .UsingFragment((IQueryable<Module> fullModule) => fullModule);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { modules { modules { ... fullModule } } } fragment fullModule on Module { name }",
+                queryText);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
@@ -824,8 +852,18 @@ namespace Ugpa.GraphQL.Linq.Tests
         {
         }
 
+        private abstract class DataFlowSystem
+        {
+            public DataFlowSystemItem[] Items { get; }
+        }
+
         private abstract class DataFlowSystemItem
         {
+        }
+
+        private abstract class ModuleCollection
+        { 
+            public Module[] Modules { get; }
         }
 
         private abstract class Module : DataFlowSystemItem

@@ -53,7 +53,11 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             public void Prune()
             {
-                Prune(Children.Where(_ => _.type == NodeType.Fragment).ToArray());
+                var fragments = Children.Where(_ => _.type == NodeType.Fragment).ToArray();
+                foreach (var fragment in fragments)
+                    Children.Remove(fragment);
+
+                Prune(fragments);
             }
 
             public string ToQueryString()
@@ -76,7 +80,9 @@ namespace Ugpa.GraphQL.Linq.Utils
                 builder.Append(subBuilder.ToString());
                 builder.AppendLine("}");
 
-                foreach (var fragment in Children.Where(_ => _.type == NodeType.Fragment))
+                var fragments = new HashSet<GqlQueryNode>();
+                CollectFragments(fragments, 0);
+                foreach (var fragment in fragments)
                     fragment.ToQueryString(builder, string.Empty);
 
                 return builder.ToString();
@@ -155,6 +161,28 @@ namespace Ugpa.GraphQL.Linq.Utils
 
                     foreach (var child in Children.Join(fragment.Children, _ => _.Name, _ => _.Name, (c, fc) => c).ToArray())
                         Children.Remove(child);
+                }
+            }
+
+            private void CollectFragments(HashSet<GqlQueryNode> fragments, int depth)
+            {
+                if (depth > 50)
+                    throw new InvalidOperationException();
+
+                foreach (var child in Children)
+                {
+                    if (child.type == NodeType.Fragment)
+                    {
+                        if (!fragments.Contains(child))
+                        {
+                            fragments.Add(child);
+                            child.CollectFragments(fragments, depth++);
+                        }
+                    }
+                    else
+                    {
+                        child.CollectFragments(fragments, depth++);
+                    }
                 }
             }
 
