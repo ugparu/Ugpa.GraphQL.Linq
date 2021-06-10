@@ -738,6 +738,30 @@ namespace Ugpa.GraphQL.Linq.Tests
                 queryText);
         }
 
+        [Fact]
+        public void RecursiveFragmentTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module {
+                    name: String!
+                    child: Module
+                }
+                type Query {
+                    modules: [Module]
+                }");
+
+            var query = new Module[0]
+                .AsQueryable()
+                .UsingFragment((IQueryable<Module> fullModule) => fullModule.Include(_ => _.Child));
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { modules { ... fullModule } } fragment fullModule on Module { name child { name } }",
+                queryText);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);

@@ -97,7 +97,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 // Removing empty nodes.
                 foreach (var child in Children.ToArray())
                 {
-                    child.Prune(fragments);
+                    child.Prune(fragments.Where(f => f != child).ToArray());
                     if (child.GraphType is IComplexGraphType && !child.Children.Any())
                     {
                         Children.Remove(child);
@@ -117,10 +117,8 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             public string ToQueryString()
             {
-                var fragments = Children.Where(_ => _.type == NodeType.Fragment).ToArray();
-
                 var subBuilder = new StringBuilder();
-                ToQueryString(subBuilder, string.Empty, fragments);
+                ToQueryString(subBuilder, string.Empty);
 
                 var builder = new StringBuilder();
                 builder.Append("query");
@@ -138,7 +136,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 builder.AppendLine("}");
 
                 foreach (var fragment in Children.Where(_ => _.type == NodeType.Fragment))
-                    fragment.ToQueryString(builder, string.Empty, fragments);
+                    fragment.ToQueryString(builder, string.Empty);
 
                 return builder.ToString();
             }
@@ -160,7 +158,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 return builder.ToString();
             }
 
-            private void ToQueryString(StringBuilder queryBuilder, string indent, IEnumerable<GqlQueryNode> fragments)
+            private void ToQueryString(StringBuilder queryBuilder, string indent)
             {
                 if (type == NodeType.Fragment)
                 {
@@ -191,13 +189,13 @@ namespace Ugpa.GraphQL.Linq.Utils
 
                 queryBuilder.AppendLine(" {");
 
-                if (fragments.FirstOrDefault(_ => _ != this && _.GraphType == GraphType) is GqlQueryNode fragment)
-                    queryBuilder.AppendLine($"{indent}  ... {fragment.Name}");
+                foreach (var child in Children.Where(_ => _.type == NodeType.Fragment))
+                    queryBuilder.AppendLine($"{indent}  ... {child.Name}");
 
                 foreach (var child in Children.Where(_ => _.type == NodeType.Field))
                 {
                     if (child.Children.Any())
-                        child.ToQueryString(queryBuilder, indent, fragments);
+                        child.ToQueryString(queryBuilder, indent);
                     else
                         queryBuilder.AppendLine($"{indent}  {child.Name}");
                 }
@@ -205,7 +203,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 foreach (var child in Children.Where(_ => _.type == NodeType.Subtype))
                 {
                     queryBuilder.Append($"{indent}  ... on {child.GraphType.Name}");
-                    child.ToQueryString(queryBuilder, indent, fragments);
+                    child.ToQueryString(queryBuilder, indent);
                 }
 
                 queryBuilder.AppendLine($"{indent}}}");
