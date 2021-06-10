@@ -88,6 +88,15 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Member &quot;{0}&quot; of data type &quot;{1}&quot; is missing in or not mapped for GraphQL type &quot;{2}&quot;..
+        /// </summary>
+        internal static string GqlQueryBuilder_MemberIsMissingOrNotMapped {
+            get {
+                return ResourceManager.GetString("GqlQueryBuilder_MemberIsMissingOrNotMapped", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Type &quot;{0}&quot; is not defined in schema..
         /// </summary>
         internal static string GraphTypeMapper_TypeNotDefined {

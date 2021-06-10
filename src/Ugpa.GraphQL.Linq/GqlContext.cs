@@ -58,7 +58,8 @@ namespace Ugpa.GraphQL.Linq
 
                 var mapper = new GraphTypeMapper(schema, fluentContext!);
                 var serializer = GetSerializer(new EntityCache(mapper));
-                var queryBuilder = new GqlQueryBuilder(schema, mapper);
+                var typeNameMapper = new JsonContactMemberNameMapper(serializer.ContractResolver);
+                var queryBuilder = new GqlQueryBuilder(schema, mapper, typeNameMapper);
 
                 return new GqlQueryProvider(gqlClient, queryBuilder, serializer);
             });

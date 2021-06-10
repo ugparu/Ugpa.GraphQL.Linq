@@ -30,11 +30,13 @@ namespace Ugpa.GraphQL.Linq.Utils
 
         private readonly ISchema schema;
         private readonly IGraphTypeNameMapper graphTypeNameMapper;
+        private readonly IMemberNameMapper memberNameMapper;
 
-        public GqlQueryBuilder(ISchema schema, IGraphTypeNameMapper graphTypeNameMapper)
+        public GqlQueryBuilder(ISchema schema, IGraphTypeNameMapper graphTypeNameMapper, IMemberNameMapper memberNameMapper)
         {
             this.schema = schema ?? throw new ArgumentNullException(nameof(schema));
             this.graphTypeNameMapper = graphTypeNameMapper ?? throw new ArgumentNullException(nameof(graphTypeNameMapper));
+            this.memberNameMapper = memberNameMapper ?? throw new ArgumentNullException(nameof(memberNameMapper));
         }
 
         public string BuildQuery(Expression expression, VariablesResolver variablesResolver, out string entryPoint)
@@ -176,8 +178,13 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             GqlQueryNode GetQueryNodeFromCurrentMember(IComplexGraphType ownerType, GqlQueryNode.NodeType nodeType)
             {
-                var field = ownerType.Fields.FirstOrDefault(_ => _.Name.Equals(member.Member.Name, StringComparison.OrdinalIgnoreCase))
-                    ?? throw new InvalidOperationException();
+                var fieldName = memberNameMapper.GetFieldName(member.Member);
+                var field = ownerType.Fields.FirstOrDefault(_ => _.Name.Equals(fieldName, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new InvalidOperationException(string.Format(
+                        Resources.GqlQueryBuilder_MemberIsMissingOrNotMapped,
+                        member.Member.Name,
+                        member.Member.DeclaringType,
+                        ownerType.Name));
 
                 return GetQueryNodeForComplexType(field, nodeType, includeScalar, variablesResolver, null);
             }

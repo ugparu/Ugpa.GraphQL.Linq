@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using GraphQL.Types;
 using GraphQL.Utilities;
@@ -834,7 +835,10 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
-            return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper);
+            return new GqlQueryBuilder(
+                Schema.For(typeDefinitions, configure),
+                mapper,
+                Mock.Of<IMemberNameMapper>(_ => _.GetFieldName == (Func<MemberInfo, string>)(m => m.Name)));
         }
 
         private string PostProcessQuery(string query)
