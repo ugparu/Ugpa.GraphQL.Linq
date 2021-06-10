@@ -56,6 +56,49 @@ namespace Ugpa.GraphQL.Linq.Utils
                 Prune(Children.Where(_ => _.type == NodeType.Fragment).ToArray());
             }
 
+            public string ToQueryString()
+            {
+                var subBuilder = new StringBuilder();
+                ToQueryString(subBuilder, string.Empty);
+
+                var builder = new StringBuilder();
+                builder.Append("query");
+
+                var vars = variablesResolver.GetAllVariables().ToArray();
+                if (vars.Any())
+                {
+                    var args = vars.Select(_ => $"${_.Name}: {_.Type}").ToArray();
+                    var argsString = string.Join(", ", args);
+                    builder.Append($"({argsString})");
+                }
+
+                builder.AppendLine(" {");
+                builder.Append(subBuilder.ToString());
+                builder.AppendLine("}");
+
+                foreach (var fragment in Children.Where(_ => _.type == NodeType.Fragment))
+                    fragment.ToQueryString(builder, string.Empty);
+
+                return builder.ToString();
+            }
+
+            public override string ToString()
+            {
+                var builder = new StringBuilder($"[{type}]: {Name}");
+
+                if (arguments.Any())
+                    builder.Append($"({string.Join(", ", arguments.Select(_ => _.Name))})");
+
+                if (Children.Any())
+                {
+                    builder.Append(" {");
+                    builder.Append(string.Join(" ", Children.Select(_ => _.Name)));
+                    builder.Append(" }");
+                }
+
+                return builder.ToString();
+            }
+
             private void Prune(IEnumerable<GqlQueryNode> fragments)
             {
                 // Merging complex type fields.
@@ -113,49 +156,6 @@ namespace Ugpa.GraphQL.Linq.Utils
                     foreach (var child in Children.Join(fragment.Children, _ => _.Name, _ => _.Name, (c, fc) => c).ToArray())
                         Children.Remove(child);
                 }
-            }
-
-            public string ToQueryString()
-            {
-                var subBuilder = new StringBuilder();
-                ToQueryString(subBuilder, string.Empty);
-
-                var builder = new StringBuilder();
-                builder.Append("query");
-
-                var vars = variablesResolver.GetAllVariables().ToArray();
-                if (vars.Any())
-                {
-                    var args = vars.Select(_ => $"${_.Name}: {_.Type}").ToArray();
-                    var argsString = string.Join(", ", args);
-                    builder.Append($"({argsString})");
-                }
-
-                builder.AppendLine(" {");
-                builder.Append(subBuilder.ToString());
-                builder.AppendLine("}");
-
-                foreach (var fragment in Children.Where(_ => _.type == NodeType.Fragment))
-                    fragment.ToQueryString(builder, string.Empty);
-
-                return builder.ToString();
-            }
-
-            public override string ToString()
-            {
-                var builder = new StringBuilder($"[{type}]: {Name}");
-
-                if (arguments.Any())
-                    builder.Append($"({string.Join(", ", arguments.Select(_ => _.Name))})");
-
-                if (Children.Any())
-                {
-                    builder.Append(" {");
-                    builder.Append(string.Join(" ", Children.Select(_ => _.Name)));
-                    builder.Append(" }");
-                }
-
-                return builder.ToString();
             }
 
             private void ToQueryString(StringBuilder queryBuilder, string indent)
