@@ -174,12 +174,12 @@ namespace Ugpa.GraphQL.Linq.Utils
                         if (!fragments.Contains(child))
                         {
                             fragments.Add(child);
-                            child.CollectFragments(fragments, depth++);
+                            child.CollectFragments(fragments, depth + 1);
                         }
                     }
                     else
                     {
-                        child.CollectFragments(fragments, depth++);
+                        child.CollectFragments(fragments, depth + 1);
                     }
                 }
             }
