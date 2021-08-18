@@ -153,7 +153,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                         Children.Remove(child);
                 }
 
-                // Pruning children
+                // Pruning children.
                 foreach (var child in Children.ToArray())
                     child.Prune(fragments.Where(f => f != child).ToArray());
 

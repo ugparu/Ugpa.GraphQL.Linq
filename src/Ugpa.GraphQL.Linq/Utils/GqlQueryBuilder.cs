@@ -143,7 +143,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 else if (methodDefinition == include.Value || methodDefinition == includeEnum.Value)
                 {
                     var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesResolver, variablesSource);
-                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.Root.GraphType, includeScalar, variablesResolver, variablesSource);
+                    var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.Head.GraphType, includeScalar, variablesResolver, variablesSource);
                     node.Head.Children.Add(subNode.Root);
                     return (node.Root, node.Root);
                 }
@@ -201,7 +201,7 @@ namespace Ugpa.GraphQL.Linq.Utils
             {
                 var nestedNode = GetQueryNodeFromMember(nestedMember, owner, false, variablesResolver);
                 var node = GetQueryNodeFromCurrentMember((IComplexGraphType)nestedNode.Head.GraphType, GqlQueryNode.NodeType.Field);
-                nestedNode.Root.Children.Add(node);
+                nestedNode.Head.Children.Add(node);
                 return (nestedNode.Root, node);
             }
             else

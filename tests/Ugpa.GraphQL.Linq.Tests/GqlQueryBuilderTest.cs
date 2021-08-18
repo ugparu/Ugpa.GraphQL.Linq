@@ -833,12 +833,99 @@ namespace Ugpa.GraphQL.Linq.Tests
                 queryText);
         }
 
+
+        [Fact]
+        public void FragmentUsageWithMultipleInterfacesImplementationAndRecursionTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface DataFlowSystemItem {
+                    id: ID
+                }
+                interface Module {
+                    name: String!
+                    submodules: [Module]
+                }
+                type ModuleA implements DataFlowSystemItem & Module {
+                    id: ID
+                    name: String!
+                    a: Int!
+                    submodules: [Module]
+                }
+                type ModuleB implements DataFlowSystemItem & Module {
+                    id: ID
+                    name: String!
+                    b: Int!
+                    submodules: [Module]
+                }
+                type Query {
+                    items: [DataFlowSystemItem]
+                }",
+                cfg =>
+                {
+                    cfg.Types.For("DataFlowSystemItem").ResolveType = _ => throw new NotSupportedException();
+                    cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException();
+                });
+
+            var query = new DataFlowSystemItem[0]
+                .AsQueryable()
+                .Include(i => ((Module)i).Submodules.Include(m0 => m0.Submodules))
+                .UsingFragment((IQueryable<Module> fullModule) => fullModule);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { items { __typename id ... on Module { ... fullModule submodules { ... fullModule submodules { ... fullModule } } } ... on ModuleA { a } ... on ModuleB { b } } } " +
+                "fragment fullModule on Module { __typename name ... on DataFlowSystemItem { id } ... on ModuleA { a } ... on ModuleB { b } }",
+                queryText);
+        }
+
+        [Fact]
+        public void Foo()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface DataFlowSystemItem {
+                    id: ID
+                }
+                interface Module {
+                    name: String!
+                }
+                type Module2 implements DataFlowSystemItem & Module {
+                    id: ID
+                    name: String!
+                    channels: ChannelGroup
+                }
+                type ChannelGroup {
+                    id: ID
+                    groups: [ChannelGroup]
+                }
+                type Query {
+                    items: [DataFlowSystemItem]
+                }",
+                cfg =>
+                {
+                    cfg.Types.For("DataFlowSystemItem").ResolveType = _ => throw new NotSupportedException();
+                    cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException();
+                });
+
+            var query = new DataFlowSystemItem[0]
+                .AsQueryable()
+                .Include(i => ((Module2)i).Channels)
+                .Include(i => ((Module2)i).Channels.Groups.Include(c => c.Groups));
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { items { __typename id ... on Module { name } ... on Module2 { channels { id groups { id groups { id } } } } } }",
+                queryText);
+        }
+
         private GqlQueryBuilder GetQueryBuilder(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
-            return new GqlQueryBuilder(
-                Schema.For(typeDefinitions, configure),
-                mapper,
-                Mock.Of<IMemberNameMapper>(_ => _.GetFieldName == (Func<MemberInfo, string>)(m => m.Name)));
+            var mapperMock = new Mock<IMemberNameMapper>();
+            mapperMock.Setup(_ => _.GetFieldName(It.IsAny<MemberInfo>())).Returns<MemberInfo>(m => m.Name);
+            return new GqlQueryBuilder(Schema.For(typeDefinitions, configure), mapper, mapperMock.Object);
         }
 
         private string PostProcessQuery(string query)
@@ -908,7 +995,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         private abstract class ModuleCollection
-        { 
+        {
             public Module[] Modules { get; }
         }
 
@@ -917,6 +1004,16 @@ namespace Ugpa.GraphQL.Linq.Tests
             public Module[] Submodules { get; }
 
             public Module Child { get; }
+        }
+
+        private abstract class Module2 : Module
+        {
+            public ChannelGroup Channels { get; }
+        }
+
+        private abstract class ChannelGroup
+        {
+            public ChannelGroup[] Groups { get; }
         }
     }
 }

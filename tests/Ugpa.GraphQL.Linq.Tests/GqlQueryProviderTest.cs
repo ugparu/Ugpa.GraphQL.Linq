@@ -29,10 +29,9 @@ namespace Ugpa.GraphQL.Linq.Tests
                     objects: [Object]
                 }");
 
-            queryBuilder = new GqlQueryBuilder(
-                schema,
-                mapper.Object,
-                Mock.Of<IMemberNameMapper>(_ => _.GetFieldName == (Func<MemberInfo, string>)(m => m.Name)));
+            var mapperMock = new Mock<IMemberNameMapper>();
+            mapperMock.Setup(_ => _.GetFieldName(It.IsAny<MemberInfo>())).Returns<MemberInfo>(_ => _.Name);
+            queryBuilder = new GqlQueryBuilder(schema, mapper.Object, mapperMock.Object);
 
             client = clientFixture.CreateClientFor(
                 schema,
