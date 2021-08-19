@@ -129,6 +129,12 @@
   <data name="GqlQueryBuilder_MemberIsMissingOrNotMapped" xml:space="preserve">
     <value>Member "{0}" of data type "{1}" is missing in or not mapped for GraphQL type "{2}".</value>
   </data>
+  <data name="GqlQueryBuilder_NotAbstractType" xml:space="preserve">
+    <value>GraphQL type "{0}" is not an abstract type and can not has any subtypes.</value>
+  </data>
+  <data name="GqlQueryBuilder_NotPosibleDerivedType" xml:space="preserve">
+    <value>GraphQL type "{0}" is not posible subtype of "{1}".</value>
+  </data>
   <data name="GraphTypeMapper_TypeNotDefined" xml:space="preserve">
     <value>Type "{0}" is not defined in schema.</value>
   </data>

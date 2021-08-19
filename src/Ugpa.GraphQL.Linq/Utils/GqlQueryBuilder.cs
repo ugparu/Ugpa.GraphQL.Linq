@@ -191,7 +191,14 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             if (member.Expression is UnaryExpression unary && unary.NodeType == ExpressionType.Convert)
             {
+                if (owner is not IAbstractGraphType)
+                    throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_NotAbstractType, owner.Name));
+
                 var subType = (IComplexGraphType)GetGraphType(unary.Type);
+
+                if (subType is not IAbstractGraphType && !((IAbstractGraphType)owner).PossibleTypes.Contains(subType))
+                    throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_NotPosibleDerivedType, subType.Name, owner.Name));
+
                 var node = GetQueryNodeForComplexType(string.Empty, GqlQueryNode.NodeType.Subtype, subType, Enumerable.Empty<QueryArgument>(), false, variablesResolver, null);
                 var subNode = GetQueryNodeFromCurrentMember(subType, GqlQueryNode.NodeType.Field);
                 node.Children.Add(subNode);

@@ -264,6 +264,53 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void InheritanceViolationForNonAbstractBaseClassIncludeTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface Module {
+                    id: ID
+                }
+                type Module2 implements Module {
+                    id: ID
+                }
+                type Module3 implements Module {
+                    id: ID
+                }
+                type Query {
+                    modules: [Module2]
+                }",
+                cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException());
+
+            var query = new Module2[0]
+                .AsQueryable()
+                .Include(_ => ((Module3)_).Channels);
+
+            Assert.Throws<InvalidOperationException>(() => queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _));
+        }
+
+        [Fact]
+        public void InheritanceViolationForAbstractBaseClassIncludeTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface Module {
+                    id: ID
+                }
+                type Module2 {
+                    id: ID
+                }
+                type Query {
+                    modules: [Module]
+                }",
+                cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException());
+
+            var query = new Module[0]
+                .AsQueryable()
+                .Include(_ => ((Module2)_).Channels);
+
+            Assert.Throws<InvalidOperationException>(() => queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _));
+        }
+
+        [Fact]
         public void SimpleParametrizedQueryTest()
         {
             var queryBuilder = GetQueryBuilder(@"
@@ -1009,6 +1056,10 @@ namespace Ugpa.GraphQL.Linq.Tests
         private abstract class Module2 : Module
         {
             public ChannelGroup Channels { get; }
+        }
+
+        private abstract class Module3 : Module2
+        {
         }
 
         private abstract class ChannelGroup
