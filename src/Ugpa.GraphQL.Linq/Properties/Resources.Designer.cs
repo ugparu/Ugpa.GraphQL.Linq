@@ -79,11 +79,11 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Field &quot;{0}&quot; is not complex type field..
+        ///   Looks up a localized string similar to Field &quot;{0}&quot; is not complex or union type field..
         /// </summary>
-        internal static string GqlQueryBuilder_FieldTypeIsNotComplexType {
+        internal static string GqlQueryBuilder_FieldTypeIsNotComplexOrUnionType {
             get {
-                return ResourceManager.GetString("GqlQueryBuilder_FieldTypeIsNotComplexType", resourceCulture);
+                return ResourceManager.GetString("GqlQueryBuilder_FieldTypeIsNotComplexOrUnionType", resourceCulture);
             }
         }
         

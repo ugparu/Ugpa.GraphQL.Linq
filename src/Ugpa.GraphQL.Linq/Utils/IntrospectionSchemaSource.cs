@@ -95,6 +95,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 "LIST" => ResolveListGraphType(findType, types, type, graphTypeCache),
                 "SCALAR" => ResolveScalarGraphType(type),
                 "INTERFACE" => ResolveInterfaceGraphType(findType, types, type, graphTypeCache),
+                "UNION" => ResolveUnionGraphType(findType, types, type, graphTypeCache),
                 "INPUT_OBJECT" => ResolveInputObjectGraphType(findType, types, type, graphTypeCache),
                 "ENUM" => ResolveEnumGraphType(type),
                 _ => throw new NotImplementedException()
@@ -152,6 +153,25 @@ namespace Ugpa.GraphQL.Linq.Utils
         {
             var gType = ResolveComplexGraphType<InterfaceGraphType>(findType, types, type, graphTypeCache);
             gType.ResolveType = _ => throw new NotSupportedException();
+            return gType;
+        }
+
+        private UnionGraphType ResolveUnionGraphType(Func<string, IGraphType?> findType, JObject[] types, JObject type, Dictionary<string, IGraphType> graphTypeCache)
+        {
+            var typeName = (string)((JValue)type["name"]!).Value!;
+            var gType = new UnionGraphType
+            {
+                Name = typeName,
+                ResolveType = _ => throw new NotSupportedException()
+            };
+            graphTypeCache[typeName] = gType;
+
+            foreach (var possibleType in ((JArray)type["possibleTypes"]!).Cast<JObject>())
+            {
+                var subType = (IObjectGraphType)ResolveGraphType(findType, types, possibleType, graphTypeCache);
+                gType.AddPossibleType(subType);
+            }
+
             return gType;
         }
 

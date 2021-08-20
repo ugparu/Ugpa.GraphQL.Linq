@@ -123,8 +123,8 @@
   <data name="GqlMaterializer_UnableBindToType" xml:space="preserve">
     <value>Can`'t bind GraphQL type "{0}" to data type.</value>
   </data>
-  <data name="GqlQueryBuilder_FieldTypeIsNotComplexType" xml:space="preserve">
-    <value>Field "{0}" is not complex type field.</value>
+  <data name="GqlQueryBuilder_FieldTypeIsNotComplexOrUnionType" xml:space="preserve">
+    <value>Field "{0}" is not complex or union type field.</value>
   </data>
   <data name="GqlQueryBuilder_MemberIsMissingOrNotMapped" xml:space="preserve">
     <value>Member "{0}" of data type "{1}" is missing in or not mapped for GraphQL type "{2}".</value>

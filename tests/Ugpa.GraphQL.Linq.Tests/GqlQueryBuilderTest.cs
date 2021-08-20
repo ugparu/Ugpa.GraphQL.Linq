@@ -635,6 +635,62 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void UnionTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module2 {
+                    name: String!
+                }
+                type Module3 {
+                    name: String!
+                }
+                union Module = Module2 | Module3
+                type Query {
+                    modules: [Module]
+                }",
+                cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotImplementedException());
+
+            var query = new Module[0].AsQueryable();
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { modules { __typename ... on Module2 { name } ... on Module3 { name } } }",
+                queryText);
+        }
+
+        [Fact]
+        public void UnionIncludeTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module2 {
+                    name: String!
+                }
+                type Module3 {
+                    name: String!
+                }
+                union DataFlowSystemItem = Module2 | Module3
+                type DataFlowSystem {
+                    items: [DataFlowSystemItem]
+                }
+                type Query {
+                    systems: [DataFlowSystem]
+                }",
+                cfg => cfg.Types.For("DataFlowSystemItem").ResolveType = _ => throw new NotImplementedException());
+
+            var query = new DataFlowSystem[0]
+                .AsQueryable()
+                .Include(_ => _.Items);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { systems { items { __typename ... on Module2 { name } ... on Module3 { name } } } }",
+                queryText);
+        }
+
+        [Fact]
         public void RecursiveQueryTest()
         {
             var queryBuilder = GetQueryBuilder(@"
