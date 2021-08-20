@@ -217,21 +217,28 @@ namespace Ugpa.GraphQL.Linq.Utils
 
         private GqlQueryNode GetQueryNodeFromField(FieldType field, bool includeScalarFields, VariablesResolver variablesResolver, object? variablesSource)
         {
-            var complexGraphType =
-                field.ResolvedType as IComplexGraphType
-                ?? (field.ResolvedType as IProvideResolvedType)?.ResolvedType as IComplexGraphType;
+            return ExtractFinalGraphType(field.ResolvedType) switch
+            {
+                IComplexGraphType complexGraphType => GetQueryNodeForComplexType(
+                    field.Name,
+                    GqlQueryNode.NodeType.Field,
+                    complexGraphType,
+                    field.Arguments,
+                    includeScalarFields,
+                    variablesResolver,
+                    variablesSource),
 
-            if (complexGraphType is not null)
-                return GetQueryNodeForComplexType(field.Name, GqlQueryNode.NodeType.Field, complexGraphType, field.Arguments, includeScalarFields, variablesResolver, variablesSource);
+                UnionGraphType unionGraphType => GetQueryNodeForUnionType(
+                    field.Name,
+                    GqlQueryNode.NodeType.Field,
+                    unionGraphType,
+                    field.Arguments,
+                    includeScalarFields,
+                    variablesResolver,
+                    variablesSource),
 
-            var unionGraphType =
-                field.ResolvedType as UnionGraphType
-                ?? (field.ResolvedType as IProvideResolvedType)?.ResolvedType as UnionGraphType;
-
-            if (unionGraphType is not null)
-                return GetQueryNodeForUnionType(field.Name, GqlQueryNode.NodeType.Field, unionGraphType, field.Arguments, includeScalarFields, variablesResolver, variablesSource);
-
-            throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_FieldTypeIsNotComplexOrUnionType, field.Name));
+                _ => throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_FieldTypeIsNotComplexOrUnionType, field.Name))
+            };
         }
 
         private GqlQueryNode GetQueryNodeForComplexType(string name, GqlQueryNode.NodeType nodeType, IComplexGraphType complexGraphType, IEnumerable<QueryArgument> arguments, bool includeScalarFields, VariablesResolver variablesResolver, object? variablesSource)
@@ -336,9 +343,7 @@ namespace Ugpa.GraphQL.Linq.Utils
         private FieldType GetBestFitQueryField(IGraphType graphType, object? variablesSource)
         {
             var fields = schema.Query.Fields
-                .Where(_ =>
-                    _.ResolvedType == graphType ||
-                    _.ResolvedType is IProvideResolvedType prt && prt.ResolvedType == graphType)
+                .Where(_ => ExtractFinalGraphType(_.ResolvedType) == graphType)
                 .ToArray();
 
             if (!fields.Any())
@@ -363,6 +368,14 @@ namespace Ugpa.GraphQL.Linq.Utils
                             _.Arguments.All(arg => props.Any(p => p.Name == arg.Name)));
                 }
             }
+        }
+
+        private IGraphType ExtractFinalGraphType(IGraphType graphType)
+        {
+            while (graphType is IProvideResolvedType prt)
+                graphType = prt.ResolvedType;
+
+            return graphType;
         }
     }
 }

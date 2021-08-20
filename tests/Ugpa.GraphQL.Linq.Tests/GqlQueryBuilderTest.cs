@@ -23,6 +23,25 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void DeepNestingFieldTypeQueryTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Product {
+                    name: String!
+                }
+                type Query {
+                   products: [[[[Product!]!]!]!]!
+                }");
+
+            var query = new Product[0].AsQueryable();
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("query { products { name } }", queryText);
+        }
+
+        [Fact]
         public void SimpleQueryTest()
         {
             var queryBuilder = GetQueryBuilder(@"
