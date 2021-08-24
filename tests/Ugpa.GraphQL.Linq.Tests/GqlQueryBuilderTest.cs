@@ -283,6 +283,39 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void IncludeAfterSelectTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Product {
+                    id: Int!
+                    productInfo: ProductInfo
+                }
+                type ProductInfo {
+                    description: String!
+                    about: ProductAbout
+                }
+                type ProductAbout {
+                    code: String!
+                }
+                type Query {
+                    products: [Product]
+                }");
+
+            var query = new Product[0]
+                .AsQueryable()
+                .Select(_ => _.ProductInfo)
+                .Include(_ => _.About)
+                .Include(_ => _.About);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { products { productInfo { description about { code } } } }",
+                queryText);
+        }
+
+        [Fact]
         public void InheritanceViolationForNonAbstractBaseClassIncludeTest()
         {
             var queryBuilder = GetQueryBuilder(@"
@@ -1003,7 +1036,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
-        public void Foo()
+        public void MultipleInterfaceImplementationWithIncludeTest()
         {
             var queryBuilder = GetQueryBuilder(@"
                 interface DataFlowSystemItem {

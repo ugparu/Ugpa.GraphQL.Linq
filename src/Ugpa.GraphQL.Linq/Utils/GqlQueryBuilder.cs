@@ -142,7 +142,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                     var node = GetQueryNode(methodCall.Arguments[0], owner, true, variablesResolver, variablesSource);
                     var subNode = GetQueryNode(methodCall.Arguments[1], (IComplexGraphType)node.Head.GraphType, includeScalar, variablesResolver, variablesSource);
                     node.Head.Children.Add(subNode.Root);
-                    return (node.Root, node.Root);
+                    return (node.Root, node.Head);
                 }
                 else if (methodDefinition == whereParams.Value)
                 {
