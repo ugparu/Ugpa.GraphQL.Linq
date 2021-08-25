@@ -475,7 +475,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
-        public void IncludeSubtypeFieldQueryTest()
+        public void IncludeSubtypeFieldQueryWithConvertTest()
         {
             var queryBuilder = GetQueryBuilder(@"
                 interface TypeTemplate {
@@ -513,6 +513,60 @@ namespace Ugpa.GraphQL.Linq.Tests
             var query = new TypeTemplate[0]
                 .AsQueryable()
                 .Include(_ => ((TextboxTemplate)_).Frame);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal("templates", entryPoint);
+
+            Assert.Equal(
+                "query { templates { __typename id name " +
+                "... on TextTemplate { fontFamily fontSize } " +
+                "... on RailchainTemplate { mainLineWidth sideLineWidth } " +
+                "... on TextboxTemplate { frame { borderWidth } } " +
+                "} }",
+                queryText);
+        }
+
+        [Fact]
+        public void IncludeSubtypeFieldQueryWithTypeAsTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                interface TypeTemplate {
+                    id: ID
+                    name: String!
+                }
+                type TextTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    fontFamily: String!
+                    fontSize: Int!
+                }
+                type RailchainTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    mainLineWidth: Int!
+                    sideLineWidth: Int!
+                }
+                type TextboxFrame {
+                    borderWidth: Int!
+                }
+                type TextboxTemplate implements TypeTemplate {
+                    id: ID
+                    name: String!
+                    frame: TextboxFrame!
+                }
+                type Query {
+                    templates: [TypeTemplate]
+                }",
+                cfg =>
+                {
+                    cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException();
+                });
+
+            var query = new TypeTemplate[0]
+                .AsQueryable()
+                .Include(_ => (_ as TextboxTemplate).Frame);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);

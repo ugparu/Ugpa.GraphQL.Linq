@@ -186,32 +186,42 @@ namespace Ugpa.GraphQL.Linq.Utils
                 return GetQueryNodeFromField(field, includeScalar, variablesResolver, null);
             }
 
-            if (member.Expression is UnaryExpression unary && unary.NodeType == ExpressionType.Convert)
+            switch (member.Expression)
             {
-                if (owner is not IAbstractGraphType)
-                    throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_NotAbstractType, owner.Name));
+                case UnaryExpression unary:
+                    {
+                        if (unary.NodeType is ExpressionType.Convert or ExpressionType.TypeAs)
+                        {
+                            if (owner is not IAbstractGraphType)
+                                throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_NotAbstractType, owner.Name));
 
-                var subType = (IComplexGraphType)GetGraphType(unary.Type);
+                            var subType = (IComplexGraphType)GetGraphType(unary.Type);
 
-                if (subType is not IAbstractGraphType && !((IAbstractGraphType)owner).PossibleTypes.Contains(subType))
-                    throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_NotPosibleDerivedType, subType.Name, owner.Name));
+                            if (subType is not IAbstractGraphType && !((IAbstractGraphType)owner).PossibleTypes.Contains(subType))
+                                throw new InvalidOperationException(string.Format(Resources.GqlQueryBuilder_NotPosibleDerivedType, subType.Name, owner.Name));
 
-                var node = GetQueryNodeForComplexType(string.Empty, GqlQueryNode.NodeType.Subtype, subType, Enumerable.Empty<QueryArgument>(), false, variablesResolver, null);
-                var subNode = GetQueryNodeFromCurrentMember(subType);
-                node.Children.Add(subNode);
-                return (node, subNode);
-            }
-            else if (member.Expression is MemberExpression nestedMember)
-            {
-                var nestedNode = GetQueryNodeFromMember(nestedMember, owner, false, variablesResolver);
-                var node = GetQueryNodeFromCurrentMember((IComplexGraphType)nestedNode.Head.GraphType);
-                nestedNode.Head.Children.Add(node);
-                return (nestedNode.Root, node);
-            }
-            else
-            {
-                var node = GetQueryNodeFromCurrentMember(owner);
-                return (node, node);
+                            var node = GetQueryNodeForComplexType(string.Empty, GqlQueryNode.NodeType.Subtype, subType, Enumerable.Empty<QueryArgument>(), false, variablesResolver, null);
+                            var subNode = GetQueryNodeFromCurrentMember(subType);
+                            node.Children.Add(subNode);
+                            return (node, subNode);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException();
+                        }
+                    }
+                case MemberExpression nestedMember:
+                    {
+                        var nestedNode = GetQueryNodeFromMember(nestedMember, owner, false, variablesResolver);
+                        var node = GetQueryNodeFromCurrentMember((IComplexGraphType)nestedNode.Head.GraphType);
+                        nestedNode.Head.Children.Add(node);
+                        return (nestedNode.Root, node);
+                    }
+                default:
+                    {
+                        var node = GetQueryNodeFromCurrentMember(owner);
+                        return (node, node);
+                    }
             }
         }
 
