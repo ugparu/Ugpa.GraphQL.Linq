@@ -80,6 +80,21 @@ namespace Ugpa.GraphQL.Linq
         /// <typeparam name="TSource">Query element type.</typeparam>
         /// <typeparam name="TFrag">Fragment element type.</typeparam>
         /// <param name="source">Source <see cref="IQueryable{TSource}"/>.</param>
+        /// <param name="fragmentName">Fragment name.</param>
+        /// <param name="fragmentQuery">Function to configure fragment.</param>
+        /// <returns>New instance of <see cref="IQueryable{TSource}"/> with configured fragment.</returns>
+        public static IQueryable<TSource> UsingFragment<TSource, TFrag>(this IQueryable<TSource> source, string fragmentName, Func<IQueryable<TFrag>, IQueryable<TFrag>> fragmentQuery)
+        {
+            var fragmentExpression = Utils.FragmentFactory.CreateFragment(fragmentName, fragmentQuery);
+            return source.UsingFragment(fragmentExpression);
+        }
+
+        /// <summary>
+        /// Declares query fragment.
+        /// </summary>
+        /// <typeparam name="TSource">Query element type.</typeparam>
+        /// <typeparam name="TFrag">Fragment element type.</typeparam>
+        /// <param name="source">Source <see cref="IQueryable{TSource}"/>.</param>
         /// <param name="fragment">Fragment <see cref="IQueryable{TFrag}"/>.</param>
         /// <returns>New instance of <see cref="IQueryable{TSource}"/> with configured fragment.</returns>
         public static IQueryable<TSource> UsingFragment<TSource, TFrag>(this IQueryable<TSource> source, Expression<Func<IQueryable<TFrag>, object>> fragment)

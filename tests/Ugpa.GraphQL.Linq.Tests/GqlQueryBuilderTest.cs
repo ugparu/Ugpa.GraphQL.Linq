@@ -1001,6 +1001,39 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void ExternalFragmentBuildingTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type Module {
+                    name: String!
+                    child: Module
+                }
+                type ModuleCollection {
+                    modules: [Module]
+                }
+                type Query {
+                    modules: ModuleCollection!
+                }");
+
+            IQueryable<Module> CreateFragment(IQueryable<Module> modules)
+            {
+                return modules.Include(_ => _.Child);
+            }
+
+            var query = new ModuleCollection[0]
+                .AsQueryable()
+                .Include(_ => _.Modules)
+                .UsingFragment<ModuleCollection, Module>("fullModule", CreateFragment);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { modules { modules { ... fullModule } } } fragment fullModule on Module { name child { name } }",
+                queryText);
+        }
+
+        [Fact]
         public void FragmentUsageWithMultipleInterfacesImplementationTest()
         {
             var queryBuilder = GetQueryBuilder(@"
