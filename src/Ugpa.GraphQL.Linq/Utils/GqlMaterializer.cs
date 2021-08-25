@@ -21,7 +21,8 @@ namespace Ugpa.GraphQL.Linq.Utils
         {
             return
                 Type.GetTypeCode(objectType) == TypeCode.Object &&
-                !typeof(IEnumerable).IsAssignableFrom(objectType);
+                !typeof(IEnumerable).IsAssignableFrom(objectType) &&
+                Nullable.GetUnderlyingType(objectType) is null;
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)

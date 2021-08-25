@@ -21,6 +21,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [InlineData(typeof(short), false)]
         [InlineData(typeof(ushort), false)]
         [InlineData(typeof(int), false)]
+        [InlineData(typeof(int?), false)]
         [InlineData(typeof(uint), false)]
         [InlineData(typeof(long), false)]
         [InlineData(typeof(ulong), false)]

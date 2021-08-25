@@ -21,7 +21,7 @@ namespace Ugpa.GraphQL.Linq.Utils
         {
             var typeName = GetTypeName(objectType);
             return schema.AllTypes.FirstOrDefault(_ => _.Name == typeName)
-                ?? throw new InvalidOperationException(string.Format(Resources.GraphTypeMapper_TypeNotDefined, typeName));
+                ?? throw new InvalidOperationException(string.Format(Resources.GraphTypeMapper_TypeNotDefined, typeName, objectType.AssemblyQualifiedName));
         }
 
         public string GetTypeName(Type objectType)

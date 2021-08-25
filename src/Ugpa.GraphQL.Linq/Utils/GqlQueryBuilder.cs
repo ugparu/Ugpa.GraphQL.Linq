@@ -337,7 +337,7 @@ namespace Ugpa.GraphQL.Linq.Utils
         {
             var gTypeName = graphTypeNameMapper.GetTypeName(clrType);
             return schema.AllTypes.FirstOrDefault(_ => _.Name == gTypeName)
-                ?? throw new InvalidOperationException(string.Format(Resources.GraphTypeMapper_TypeNotDefined, gTypeName));
+                ?? throw new InvalidOperationException(string.Format(Resources.GraphTypeMapper_TypeNotDefined, gTypeName, clrType.AssemblyQualifiedName));
         }
 
         private FieldType GetBestFitQueryField(IGraphType graphType, object? variablesSource)

@@ -115,7 +115,7 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Type &quot;{0}&quot; is not defined in schema..
+        ///   Looks up a localized string similar to Assumed GraphQL type &quot;{0}&quot; for type &quot;{1}&quot; is not defined in schema..
         /// </summary>
         internal static string GraphTypeMapper_TypeNotDefined {
             get {
