@@ -74,7 +74,6 @@ namespace Ugpa.GraphQL.Linq.Utils
                             else if (objectContract.DefaultCreator is not null)
                             {
                                 value = objectContract.DefaultCreator();
-                                serializer.Populate(objectToken.CreateReader(), value);
                             }
                             else
                             {
@@ -83,6 +82,8 @@ namespace Ugpa.GraphQL.Linq.Utils
 
                             if (id is not null)
                                 entityCache.PutEntity(id, value);
+
+                            serializer.Populate(objectToken.CreateReader(), value);
 
                             return value;
                         }

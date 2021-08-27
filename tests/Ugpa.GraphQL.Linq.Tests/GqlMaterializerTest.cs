@@ -186,6 +186,33 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.Same(o1, o2);
         }
 
+        [Fact]
+        public void LoopedObjectCachingTest()
+        {
+            var materializer = CreateMaterializer(@"
+                type LoopedObject {
+                    id: ID
+                    child: LoopedObject 
+                }");
+
+            var serializer = JsonSerializer.Create(
+                new JsonSerializerSettings
+                {
+                    Converters =
+                    {
+                        materializer
+                    }
+                });
+
+            var json = @"{ ""id"": ""1"", ""value"": 123, ""child"": { ""id"": ""1"" } }";
+            var obj = serializer.Deserialize<LoopedObject>(new JsonTextReader(new StringReader(json)));
+
+            Assert.NotNull(obj);
+            Assert.Equal(123, obj.Value);
+            Assert.NotNull(obj.Child);
+            Assert.Same(obj, obj.Child);
+        }
+
         private GqlMaterializer CreateMaterializer()
             => CreateMaterializer(string.Empty);
 
@@ -225,6 +252,13 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private sealed class Bar
         {
+        }
+
+        private sealed class LoopedObject
+        {
+            public int Value { get; set; }
+
+            public LoopedObject Child { get; set; }
         }
     }
 }
