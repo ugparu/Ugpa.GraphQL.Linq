@@ -25,7 +25,7 @@ namespace Ugpa.GraphQL.Linq.Utils
                 Nullable.GetUnderlyingType(objectType) is null;
         }
 
-        public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (existingValue is null)
             {
@@ -44,44 +44,61 @@ namespace Ugpa.GraphQL.Linq.Utils
             throw new NotSupportedException();
         }
 
-        private object ReadObject(JsonReader reader, JsonObjectContract objectContract, JsonSerializer serializer)
+        private object? ReadObject(JsonReader reader, JsonObjectContract objectContract, JsonSerializer serializer)
         {
-            var token = (JObject)JToken.ReadFrom(reader);
-            var objectType = objectContract.UnderlyingType;
-            if (IsTypeExplicitlyDefined(token, serializer.SerializationBinder, ref objectType))
+            switch (JToken.ReadFrom(reader))
             {
-                reader = token.CreateReader();
-                return ReadJson(reader, objectType, null, serializer);
-            }
-            else
-            {
-                if (objectContract.UnderlyingType.IsAbstract)
-                    throw new InvalidOperationException();
+                case JObject objectToken:
+                    {
+                        var objectType = objectContract.UnderlyingType;
+                        if (IsTypeExplicitlyDefined(objectToken, serializer.SerializationBinder, ref objectType))
+                        {
+                            reader = objectToken.CreateReader();
+                            return ReadJson(reader, objectType, null, serializer);
+                        }
+                        else
+                        {
+                            if (objectContract.UnderlyingType.IsAbstract)
+                                throw new InvalidOperationException();
 
-                if (entityCache.GetEntity(token, objectContract.UnderlyingType, out var id) is object value)
-                {
-                    serializer.Populate(token.CreateReader(), value);
-                    return value;
-                }
+                            if (entityCache.GetEntity(objectToken, objectContract.UnderlyingType, out var id) is object value)
+                            {
+                                serializer.Populate(objectToken.CreateReader(), value);
+                                return value;
+                            }
 
-                if (objectContract.OverrideCreator is not null)
-                {
-                    throw new NotImplementedException();
-                }
-                else if (objectContract.DefaultCreator is not null)
-                {
-                    value = objectContract.DefaultCreator();
-                    serializer.Populate(token.CreateReader(), value);
-                }
-                else
-                {
-                    throw new NotImplementedException();
-                }
+                            if (objectContract.OverrideCreator is not null)
+                            {
+                                throw new NotImplementedException();
+                            }
+                            else if (objectContract.DefaultCreator is not null)
+                            {
+                                value = objectContract.DefaultCreator();
+                                serializer.Populate(objectToken.CreateReader(), value);
+                            }
+                            else
+                            {
+                                throw new NotImplementedException();
+                            }
 
-                if (id is not null)
-                    entityCache.PutEntity(id, value);
+                            if (id is not null)
+                                entityCache.PutEntity(id, value);
 
-                return value;
+                            return value;
+                        }
+                    }
+                case JValue valueToken:
+                    {
+                        return valueToken.Type switch
+                        {
+                            JTokenType.Null => null,
+                            _ => throw new InvalidOperationException()
+                        };
+                    }
+                default:
+                    {
+                        throw new InvalidOperationException();
+                    }
             }
         }
 

@@ -136,6 +136,16 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void ReadNullValueTest()
+        {
+            var materializer = CreateMaterializer();
+            var serializer = JsonSerializer.Create();
+            var reader = new JsonTextReader(new StringReader(@"null"));
+            var obj = materializer.ReadJson(reader, typeof(object), null, serializer);
+            Assert.Null(obj);
+        }
+
+        [Fact]
         public void FailOnExistingObjectInheritanceViolationTest()
         {
             var materializer = CreateMaterializer();
