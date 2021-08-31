@@ -36,7 +36,9 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             var idFields = tokent.Properties()
                 .Join(gType.Fields, _ => _.Name, _ => _.Name, (p, f) => new { p, f })
-                .Where(_ => _.f.ResolvedType is IdGraphType)
+                .Where(_ =>
+                    _.f.ResolvedType is IdGraphType ||
+                    _.f.ResolvedType is NonNullGraphType nonNull && nonNull.ResolvedType is IdGraphType)
                 .ToArray();
 
             id = idFields.Length switch

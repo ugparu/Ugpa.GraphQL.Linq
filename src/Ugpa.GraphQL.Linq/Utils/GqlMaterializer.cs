@@ -61,30 +61,26 @@ namespace Ugpa.GraphQL.Linq.Utils
                             if (objectContract.UnderlyingType.IsAbstract)
                                 throw new InvalidOperationException();
 
-                            if (entityCache.GetEntity(objectToken, objectContract.UnderlyingType, out var id) is object value)
+                            if (entityCache.GetEntity(objectToken, objectContract.UnderlyingType, out var id) is not object value)
                             {
-                                serializer.Populate(objectToken.CreateReader(), value);
-                                return value;
-                            }
+                                if (objectContract.OverrideCreator is not null)
+                                {
+                                    throw new NotImplementedException();
+                                }
+                                else if (objectContract.DefaultCreator is not null)
+                                {
+                                    value = objectContract.DefaultCreator();
+                                }
+                                else
+                                {
+                                    throw new NotImplementedException();
+                                }
 
-                            if (objectContract.OverrideCreator is not null)
-                            {
-                                throw new NotImplementedException();
+                                if (id is not null)
+                                    entityCache.PutEntity(id, value);
                             }
-                            else if (objectContract.DefaultCreator is not null)
-                            {
-                                value = objectContract.DefaultCreator();
-                            }
-                            else
-                            {
-                                throw new NotImplementedException();
-                            }
-
-                            if (id is not null)
-                                entityCache.PutEntity(id, value);
 
                             serializer.Populate(objectToken.CreateReader(), value);
-
                             return value;
                         }
                     }

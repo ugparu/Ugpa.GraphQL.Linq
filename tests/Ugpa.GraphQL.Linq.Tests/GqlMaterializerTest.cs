@@ -174,9 +174,22 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
-        public void ValuesAreCachedTest()
+        public void ValuesWithIdAreCachedTest()
         {
             var materializer = CreateMaterializer("type Object { id: ID }");
+
+            var serializer = JsonSerializer.Create();
+
+            var json = @"{ ""id"": ""cachedObject1"" }";
+            var o1 = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(object), null, serializer);
+            var o2 = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(object), null, serializer);
+            Assert.Same(o1, o2);
+        }
+
+        [Fact]
+        public void ValuesWithNonNullIdAreCachedTest()
+        {
+            var materializer = CreateMaterializer("type Object { id: ID! }");
 
             var serializer = JsonSerializer.Create();
 
