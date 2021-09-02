@@ -684,7 +684,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         {
             var queryBuilder = GetQueryBuilder(@"
                 type Product {
-                    remarks: [String]
+                    remarks: [String!]!
                 }
                 type Query {
                     products: [Product]
@@ -1255,6 +1255,8 @@ namespace Ugpa.GraphQL.Linq.Tests
             public ProductInfo ProductInfo { get; }
 
             public IEnumerable<DrawSchema> Schemas { get; }
+
+            public IEnumerable<string> Developers { get; }
         }
 
         private class ProductInfo

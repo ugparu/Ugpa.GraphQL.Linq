@@ -268,9 +268,8 @@ namespace Ugpa.GraphQL.Linq.Utils
 
             if (includeScalarFields)
             {
-                var scalarFields = complexGraphType.Fields.Where(_ =>
-                    _.ResolvedType is ScalarGraphType ||
-                    _.ResolvedType is IProvideResolvedType r && r.ResolvedType is ScalarGraphType);
+                var scalarFields = complexGraphType.Fields
+                    .Where(_ => ExtractFinalGraphType(_.ResolvedType) is ScalarGraphType);
 
                 if (complexGraphType is IImplementInterfaces implementInterfaces && nodeType == GqlQueryNode.NodeType.Subtype)
                 {
