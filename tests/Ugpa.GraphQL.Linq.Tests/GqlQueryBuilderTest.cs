@@ -428,45 +428,43 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void InterfaceImplementationQueryTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                interface TypeTemplate {
+                interface Module {
                     id: ID
                     name: String!
                 }
-                type TextTemplate implements TypeTemplate {
+                type ModuleA implements Module {
                     id: ID
                     name: String!
-                    fontFamily: String!
-                    fontSize: Int!            
+                    stringValue: String!
                 }
-                type RailchainTemplate implements TypeTemplate {
+                type ModuleB implements Module {
                     id: ID
                     name: String!
-                    mainLineWidth: Int!
-                    sideLineWidth: Int!
+                    intValue: Int!
                 }
-                type TextboxFrame {
-                    borderWidth: Int!
+                type ModuleData {
+                    data: [Int!]!
                 }
-                type TextboxTemplate implements TypeTemplate {
+                type ModuleC implements Module {
                     id: ID
                     name: String!
-                    frame: TextboxFrame!
+                    data: ModuleData!
                 }
                 type Query {
-                    templates: [TypeTemplate]
+                    modules: [Module]
                 }",
-                cfg => cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException());
+                cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotImplementedException());
 
-            var query = new TypeTemplate[0].AsQueryable();
+            var query = new Module[0].AsQueryable();
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
-            Assert.Equal("templates", entryPoint);
+            Assert.Equal("modules", entryPoint);
             Assert.Equal(
-                "query { templates { __typename id name " +
-                "... on TextTemplate { fontFamily fontSize } " +
-                "... on RailchainTemplate { mainLineWidth sideLineWidth } " +
+                "query { modules { __typename id name " +
+                "... on ModuleA { stringValue } " +
+                "... on ModuleB { intValue } " +
                 "} }",
                 queryText);
         }
@@ -475,49 +473,47 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void IncludeSubtypeFieldQueryWithConvertTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                interface TypeTemplate {
+                interface Module {
                     id: ID
                     name: String!
                 }
-                type TextTemplate implements TypeTemplate {
+                type ModuleData {
+                    data: [Int!]!
+                }
+                type ModuleA implements Module {
                     id: ID
                     name: String!
-                    fontFamily: String!
-                    fontSize: Int!
+                    channels: ModuleData!
                 }
-                type RailchainTemplate implements TypeTemplate {
+                type ModuleB implements Module {
                     id: ID
                     name: String!
-                    mainLineWidth: Int!
-                    sideLineWidth: Int!
+                    intValue: Int!
                 }
-                type TextboxFrame {
-                    borderWidth: Int!
-                }
-                type TextboxTemplate implements TypeTemplate {
+                type ModuleC implements Module {
                     id: ID
                     name: String!
-                    frame: TextboxFrame!
+                    stringValue: String!
                 }
                 type Query {
-                    templates: [TypeTemplate]
+                    modules: [Module]
                 }",
-                cfg => cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException());
+                cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotImplementedException());
 
-            var query = new TypeTemplate[0]
+            var query = new Module[0]
                 .AsQueryable()
-                .Include(_ => ((TextboxTemplate)_).Frame);
+                .Include(_ => ((ModuleA)_).Channels);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
-            Assert.Equal("templates", entryPoint);
+            Assert.Equal("modules", entryPoint);
 
             Assert.Equal(
-                "query { templates { __typename id name " +
-                "... on TextTemplate { fontFamily fontSize } " +
-                "... on RailchainTemplate { mainLineWidth sideLineWidth } " +
-                "... on TextboxTemplate { frame { borderWidth } } " +
+                "query { modules { __typename id name " +
+                "... on ModuleA { channels { data } } " +
+                "... on ModuleB { intValue } " +
+                "... on ModuleC { stringValue } " +
                 "} }",
                 queryText);
         }
@@ -526,49 +522,47 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void IncludeSubtypeFieldQueryWithTypeAsTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                interface TypeTemplate {
+                interface Module {
                     id: ID
                     name: String!
                 }
-                type TextTemplate implements TypeTemplate {
+                type ModuleData {
+                    data: [Int!]!
+                }
+                type ModuleA implements Module {
                     id: ID
                     name: String!
-                    fontFamily: String!
-                    fontSize: Int!
+                    channels: ModuleData!
                 }
-                type RailchainTemplate implements TypeTemplate {
+                type ModuleB implements Module {
                     id: ID
                     name: String!
-                    mainLineWidth: Int!
-                    sideLineWidth: Int!
+                    intValue: Int!
                 }
-                type TextboxFrame {
-                    borderWidth: Int!
-                }
-                type TextboxTemplate implements TypeTemplate {
+                type ModuleC implements Module {
                     id: ID
                     name: String!
-                    frame: TextboxFrame!
+                    stringValue: String!
                 }
                 type Query {
-                    templates: [TypeTemplate]
+                    modules: [Module]
                 }",
-                cfg => cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException());
+                cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotImplementedException());
 
-            var query = new TypeTemplate[0]
+            var query = new Module[0]
                 .AsQueryable()
-                .Include(_ => (_ as TextboxTemplate).Frame);
+                .Include(_ => (_ as ModuleA).Channels);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
-            Assert.Equal("templates", entryPoint);
+            Assert.Equal("modules", entryPoint);
 
             Assert.Equal(
-                "query { templates { __typename id name " +
-                "... on TextTemplate { fontFamily fontSize } " +
-                "... on RailchainTemplate { mainLineWidth sideLineWidth } " +
-                "... on TextboxTemplate { frame { borderWidth } } " +
+                "query { modules { __typename id name " +
+                "... on ModuleA { channels { data } } " +
+                "... on ModuleB { intValue } " +
+                "... on ModuleC { stringValue } " +
                 "} }",
                 queryText);
         }
@@ -793,11 +787,11 @@ namespace Ugpa.GraphQL.Linq.Tests
                 }
                 type ModuleA {
                     id: Int!
-                    ref: Ref
+                    channels: Ref
                 }
                 type ModuleA1 {
                     name: String!
-                    ref: Ref
+                    channels: Ref
                 }
                 union Module = ModuleA | ModuleA1
                 type Query {
@@ -807,14 +801,17 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var query = new Module[0]
                 .AsQueryable()
-                .Include(_ => ((ModuleA)_).Ref)
-                .Include(_ => ((ModuleA1)_).Ref);
+                .Include(_ => ((ModuleA)_).Channels)
+                .Include(_ => ((ModuleA1)_).Channels);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal(
-                "query { modules { __typename ... on ModuleA { id ref { data } } ... on ModuleA1 { name ref { data } } } }",
+                "query { modules { __typename " +
+                "... on ModuleA { id channels { data } } " +
+                "... on ModuleA1 { name channels { data } } " +
+                "} }",
                 queryText);
         }
 
@@ -1266,19 +1263,6 @@ namespace Ugpa.GraphQL.Linq.Tests
             public DrawSchemaInfo ExtendedInfo { get; }
         }
 
-        private class TypeTemplate
-        {
-        }
-
-        private class TextboxTemplate : TypeTemplate
-        {
-            public TextboxFrame Frame { get; }
-        }
-
-        private class TextboxFrame
-        {
-        }
-
         private abstract class DataFlowSystem
         {
             public DataFlowSystemItem[] Items { get; }
@@ -1302,8 +1286,6 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private abstract class ModuleA : Module
         {
-            public object Ref { get; }
-
             public ChannelGroup Channels { get; }
         }
 
