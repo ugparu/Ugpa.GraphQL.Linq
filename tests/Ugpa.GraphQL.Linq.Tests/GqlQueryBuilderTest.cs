@@ -600,41 +600,41 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void NestedCollectionCastIncludeTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                type DrawSchemaInfo {
-                    author: String!
+                type DataFlowSystemItemInfo {
+                    name: String!
                 }
-                interface DrawSchema {
+                interface DataFlowSystemItem {
                     id: Int!
-                    info: DrawSchemaInfo!
+                    info: DataFlowSystemItemInfo!
                 }
-                type SimpleDrawSchema implements DrawSchema {
+                type SimpleItem implements DataFlowSystemItem {
                     id: Int!
-                    info: DrawSchemaInfo!
+                    info: DataFlowSystemItemInfo!
                 }
-                type ExtendedDrawSchema implements DrawSchema {
+                type ModuleA implements DataFlowSystemItem {
                     id: Int!
-                    info: DrawSchemaInfo!
-                    extendedInfo: DrawSchemaInfo!
+                    info: DataFlowSystemItemInfo!
+                    channels: DataFlowSystemItemInfo!
                 }
-                type Product {
+                type DataFlowSystem {
                     id: Int!
-                    schemas: [DrawSchema]
+                    items: [DataFlowSystemItem]
                 }
                 type Query {
-                    products: [Product]
+                    dataflows: [DataFlowSystem]
                 }",
-                cfg => cfg.Types.For("DrawSchema").ResolveType = _ => throw new NotImplementedException());
+                cfg => cfg.Types.For("DataFlowSystemItem").ResolveType = _ => throw new NotImplementedException());
 
-            var query = new Product[0]
+            var query = new DataFlowSystem[0]
                 .AsQueryable()
-                .Include(p => p.Schemas.Include(s => s.Info))
-                .Include(p => p.Schemas.Include(s => ((ExtendedDrawSchema)s).ExtendedInfo));
+                .Include(f => f.Items.Include(i => i.Info))
+                .Include(f => f.Items.Include(i => ((ModuleA)i).Channels));
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal(
-                @"query { products { id schemas { __typename id info { author } ... on ExtendedDrawSchema { extendedInfo { author } } } } }",
+                @"query { dataflows { id items { __typename id info { name } ... on ModuleA { channels { name } } } } }",
                 queryText);
         }
 
@@ -1242,25 +1242,12 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private class ProductInfo
         {
-            public ProductAbout About { get; }
-        }
-
-        private class ProductAbout
-        {
+            public object About { get; }
         }
 
         private class DrawSchema
         {
-            public DrawSchemaInfo Info { get; }
-        }
-
-        private class DrawSchemaInfo
-        {
-        }
-
-        private class ExtendedDrawSchema : DrawSchema
-        {
-            public DrawSchemaInfo ExtendedInfo { get; }
+            public object Info { get; }
         }
 
         private abstract class DataFlowSystem
@@ -1270,6 +1257,7 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private abstract class DataFlowSystemItem
         {
+            public object Info { get; }
         }
 
         private abstract class ModuleCollection
