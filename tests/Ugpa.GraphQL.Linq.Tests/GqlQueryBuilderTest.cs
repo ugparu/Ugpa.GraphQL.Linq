@@ -164,13 +164,13 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void SelectManyQueryTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                type Schema {
+                type DataFlowSystemItem {
                     id: ID
                     name: String!
                 }
                 type Product {
                     id: Int!
-                    schemas: [Schema]
+                    items: [DataFlowSystemItem]
                 }
                 type Query {
                     products: [Product]
@@ -178,13 +178,13 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var query = new Product[0]
                 .AsQueryable()
-                .SelectMany(_ => _.Schemas);
+                .SelectMany(_ => _.Items);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal("products", entryPoint);
-            Assert.Equal("query { products { schemas { id name } } }", queryText);
+            Assert.Equal("query { products { items { id name } } }", queryText);
         }
 
         [Fact]
@@ -366,15 +366,15 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void SimpleParametrizedQueryTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                type DrawSchema {
+                type Module {
                     id: ID
                     name: String!
                 }
                 type Query {
-                    schemas(productId: Int!): [DrawSchema]
+                    modules(productId: Int!): [Module]
                 }");
 
-            var query = new DrawSchema[0]
+            var query = new Module[0]
                 .AsQueryable()
                 .Where(new { productId = 111 });
 
@@ -382,8 +382,8 @@ namespace Ugpa.GraphQL.Linq.Tests
             var queryText = queryBuilder.BuildQuery(query.Expression, variablesResolver, out var entryPoint);
             queryText = PostProcessQuery(queryText);
 
-            Assert.Equal("schemas", entryPoint);
-            Assert.Equal("query($linq_param_0: Int!) { schemas(productId: $linq_param_0) { id name } }", queryText);
+            Assert.Equal("modules", entryPoint);
+            Assert.Equal("query($linq_param_0: Int!) { modules(productId: $linq_param_0) { id name } }", queryText);
 
             var variable = Assert.Single(variablesResolver.GetAllVariables());
             Assert.Equal("linq_param_0", variable.Name);
@@ -571,16 +571,16 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void NestedCollectionIncludeTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                type DrawSchemaInfo {
+                type DataFlowSystemItemInfo {
                     author: String!
                 }
-                type DrawSchema {
+                type DataFlowSystemItem {
                     id: Int!
-                    info: DrawSchemaInfo!
+                    info: DataFlowSystemItemInfo!
                 }
                 type Product {
                     id: Int!
-                    schemas: [DrawSchema]
+                    items: [DataFlowSystemItem]
                 }
                 type Query {
                     products: [Product]
@@ -588,12 +588,12 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var query = new Product[0]
                 .AsQueryable()
-                .Include(p => p.Schemas.Include(s => s.Info));
+                .Include(p => p.Items.Include(s => s.Info));
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
             queryText = PostProcessQuery(queryText);
 
-            Assert.Equal("query { products { id schemas { id info { author } } } }", queryText);
+            Assert.Equal("query { products { id items { id info { author } } } }", queryText);
         }
 
         [Fact]
@@ -1237,17 +1237,12 @@ namespace Ugpa.GraphQL.Linq.Tests
         {
             public ProductInfo ProductInfo { get; }
 
-            public IEnumerable<DrawSchema> Schemas { get; }
+            public IEnumerable<DataFlowSystemItem> Items { get; }
         }
 
         private class ProductInfo
         {
             public object About { get; }
-        }
-
-        private class DrawSchema
-        {
-            public object Info { get; }
         }
 
         private abstract class DataFlowSystem
