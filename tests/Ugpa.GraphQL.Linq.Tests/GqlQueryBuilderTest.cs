@@ -322,20 +322,20 @@ namespace Ugpa.GraphQL.Linq.Tests
                 interface Module {
                     id: ID
                 }
-                type Module2 implements Module {
+                type ModuleA implements Module {
                     id: ID
                 }
-                type Module3 implements Module {
+                type ModuleA1 implements Module {
                     id: ID
                 }
                 type Query {
-                    modules: [Module2]
+                    modules: [ModuleA]
                 }",
                 cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException());
 
-            var query = new Module2[0]
+            var query = new ModuleA[0]
                 .AsQueryable()
-                .Include(_ => ((Module3)_).Channels);
+                .Include(_ => ((ModuleA1)_).Channels);
 
             Assert.Throws<InvalidOperationException>(() => queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _));
         }
@@ -347,7 +347,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 interface Module {
                     id: ID
                 }
-                type Module2 {
+                type ModuleA {
                     id: ID
                 }
                 type Query {
@@ -357,7 +357,7 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var query = new Module[0]
                 .AsQueryable()
-                .Include(_ => ((Module2)_).Channels);
+                .Include(_ => ((ModuleA)_).Channels);
 
             Assert.Throws<InvalidOperationException>(() => queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _));
         }
@@ -455,10 +455,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 type Query {
                     templates: [TypeTemplate]
                 }",
-                cfg =>
-                {
-                    cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException();
-                });
+                cfg => cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException());
 
             var query = new TypeTemplate[0].AsQueryable();
 
@@ -505,10 +502,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 type Query {
                     templates: [TypeTemplate]
                 }",
-                cfg =>
-                {
-                    cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException();
-                });
+                cfg => cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException());
 
             var query = new TypeTemplate[0]
                 .AsQueryable()
@@ -559,10 +553,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 type Query {
                     templates: [TypeTemplate]
                 }",
-                cfg =>
-                {
-                    cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException();
-                });
+                cfg => cfg.Types.For("TypeTemplate").ResolveType = _ => throw new NotImplementedException());
 
             var query = new TypeTemplate[0]
                 .AsQueryable()
@@ -638,10 +629,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 type Query {
                     products: [Product]
                 }",
-                cfg =>
-                {
-                    cfg.Types.For("DrawSchema").ResolveType = _ => throw new NotImplementedException();
-                });
+                cfg => cfg.Types.For("DrawSchema").ResolveType = _ => throw new NotImplementedException());
 
             var query = new Product[0]
                 .AsQueryable()
@@ -744,13 +732,13 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void UnionTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                type Module2 {
+                type ModuleA {
                     name: String!
                 }
-                type Module3 {
+                type ModuleA1 {
                     name: String!
                 }
-                union Module = Module2 | Module3
+                union Module = ModuleA | ModuleA1
                 type Query {
                     modules: [Module]
                 }",
@@ -761,7 +749,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal(
-                "query { modules { __typename ... on Module2 { name } ... on Module3 { name } } }",
+                "query { modules { __typename ... on ModuleA { name } ... on ModuleA1 { name } } }",
                 queryText);
         }
 
@@ -769,13 +757,13 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void IncludeFieldOfUnionTypeTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                type Module2 {
+                type ModuleA {
                     name: String!
                 }
-                type Module3 {
+                type ModuleA1 {
                     name: String!
                 }
-                union DataFlowSystemItem = Module2 | Module3
+                union DataFlowSystemItem = ModuleA | ModuleA1
                 type DataFlowSystem {
                     items: [DataFlowSystemItem]
                 }
@@ -792,7 +780,7 @@ namespace Ugpa.GraphQL.Linq.Tests
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal(
-                "query { systems { items { __typename ... on Module2 { name } ... on Module3 { name } } } }",
+                "query { systems { items { __typename ... on ModuleA { name } ... on ModuleA1 { name } } } }",
                 queryText);
         }
 
@@ -803,15 +791,15 @@ namespace Ugpa.GraphQL.Linq.Tests
                 type Ref {
                     data: String!
                 }
-                type Module2 {
+                type ModuleA {
                     id: Int!
                     ref: Ref
                 }
-                type Module3 {
+                type ModuleA1 {
                     name: String!
                     ref: Ref
                 }
-                union Module = Module2 | Module3
+                union Module = ModuleA | ModuleA1
                 type Query {
                     modules: [Module]
                 }",
@@ -819,14 +807,14 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var query = new Module[0]
                 .AsQueryable()
-                .Include(_ => ((Module2)_).Ref)
-                .Include(_ => ((Module3)_).Ref);
+                .Include(_ => ((ModuleA)_).Ref)
+                .Include(_ => ((ModuleA1)_).Ref);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal(
-                "query { modules { __typename ... on Module2 { id ref { data } } ... on Module3 { name ref { data } } } }",
+                "query { modules { __typename ... on ModuleA { id ref { data } } ... on ModuleA1 { name ref { data } } } }",
                 queryText);
         }
 
@@ -834,17 +822,17 @@ namespace Ugpa.GraphQL.Linq.Tests
         public void IncludeUnionSubtypeFieldTest()
         {
             var queryBuilder = GetQueryBuilder(@"
-                type Module2 {
+                type ModuleA {
                     name: String!
                 }
-                type Module3 {
+                type ModuleA1 {
                     name: String!
                     channels: ChannelGroup
                 }
                 type ChannelGroup {
                     id: ID
                 }
-                union Module = Module2 | Module3
+                union Module = ModuleA | ModuleA1
                 type Query {
                     modules: [Module]
                 }",
@@ -852,13 +840,13 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var query = new Module[0]
                 .AsQueryable()
-                .Include(_ => ((Module3)_).Channels);
+                .Include(_ => ((ModuleA1)_).Channels);
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal(
-                "query { modules { __typename ... on Module2 { name } ... on Module3 { name channels { id } } } }",
+                "query { modules { __typename ... on ModuleA { name } ... on ModuleA1 { name channels { id } } } }",
                 queryText);
         }
 
@@ -1198,7 +1186,7 @@ namespace Ugpa.GraphQL.Linq.Tests
                 interface Module {
                     name: String!
                 }
-                type Module2 implements DataFlowSystemItem & Module {
+                type ModuleA implements DataFlowSystemItem & Module {
                     id: ID
                     name: String!
                     channels: ChannelGroup
@@ -1218,14 +1206,14 @@ namespace Ugpa.GraphQL.Linq.Tests
 
             var query = new DataFlowSystemItem[0]
                 .AsQueryable()
-                .Include(i => ((Module2)i).Channels)
-                .Include(i => ((Module2)i).Channels.Groups.Include(c => c.Groups));
+                .Include(i => ((ModuleA)i).Channels)
+                .Include(i => ((ModuleA)i).Channels.Groups.Include(c => c.Groups));
 
             var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
             queryText = PostProcessQuery(queryText);
 
             Assert.Equal(
-                "query { items { __typename id ... on Module { name } ... on Module2 { channels { id groups { id groups { id } } } } } }",
+                "query { items { __typename id ... on Module { name } ... on ModuleA { channels { id groups { id groups { id } } } } } }",
                 queryText);
         }
 
@@ -1250,13 +1238,9 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private class Product
         {
-            public int Id { get; }
-
             public ProductInfo ProductInfo { get; }
 
             public IEnumerable<DrawSchema> Schemas { get; }
-
-            public IEnumerable<string> Developers { get; }
         }
 
         private class ProductInfo
@@ -1314,16 +1298,16 @@ namespace Ugpa.GraphQL.Linq.Tests
             public Module[] Submodules { get; }
 
             public Module Child { get; }
-
-            public object Ref { get; }
         }
 
-        private abstract class Module2 : Module
+        private abstract class ModuleA : Module
         {
+            public object Ref { get; }
+
             public ChannelGroup Channels { get; }
         }
 
-        private abstract class Module3 : Module2
+        private abstract class ModuleA1 : ModuleA
         {
         }
 
