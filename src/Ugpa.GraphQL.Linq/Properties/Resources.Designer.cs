@@ -79,6 +79,24 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unable to create an instance of abstract type &quot;{0}&quot;..
+        /// </summary>
+        internal static string GqlMaterializer_UnableToCreateAbstractType {
+            get {
+                return ResourceManager.GetString("GqlMaterializer_UnableToCreateAbstractType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unable to read value &quot;{0}&quot; as object of type &quot;{1}&quot;..
+        /// </summary>
+        internal static string GqlMaterializer_UnableToReadValueAsObject {
+            get {
+                return ResourceManager.GetString("GqlMaterializer_UnableToReadValueAsObject", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Field &quot;{0}&quot; is not complex or union type field..
         /// </summary>
         internal static string GqlQueryBuilder_FieldTypeIsNotComplexOrUnionType {

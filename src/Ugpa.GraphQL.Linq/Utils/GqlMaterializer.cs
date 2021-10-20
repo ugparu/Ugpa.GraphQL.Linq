@@ -59,7 +59,11 @@ namespace Ugpa.GraphQL.Linq.Utils
                         else
                         {
                             if (objectContract.UnderlyingType.IsAbstract)
-                                throw new InvalidOperationException();
+                            {
+                                throw new InvalidOperationException(string.Format(
+                                    Resources.GqlMaterializer_UnableToCreateAbstractType,
+                                    objectContract.UnderlyingType));
+                            }
 
                             if (entityCache.GetEntity(objectToken, objectContract.UnderlyingType, out var id) is not object value)
                             {
@@ -89,7 +93,10 @@ namespace Ugpa.GraphQL.Linq.Utils
                         return valueToken.Type switch
                         {
                             JTokenType.Null => null,
-                            _ => throw new InvalidOperationException()
+                            _ => throw new InvalidOperationException(string.Format(
+                                Resources.GqlMaterializer_UnableToReadValueAsObject,
+                                valueToken.Value,
+                                objectContract.UnderlyingType))
                         };
                     }
                 default:
