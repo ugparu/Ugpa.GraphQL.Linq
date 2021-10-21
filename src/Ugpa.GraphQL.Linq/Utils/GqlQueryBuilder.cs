@@ -117,6 +117,19 @@ namespace Ugpa.GraphQL.Linq.Utils
 
                         return (node, node);
                     }
+                case UnionGraphType unionGraphType:
+                    {
+                        var node = GetQueryNodeForUnionType(
+                            parameter.Name,
+                            GqlQueryNode.NodeType.Fragment,
+                            unionGraphType,
+                            Enumerable.Empty<QueryArgument>(),
+                            includeScalar,
+                            variablesResolver,
+                            variablesSource);
+
+                        return (node, node);
+                    }
                 default:
                     {
                         throw new NotImplementedException();

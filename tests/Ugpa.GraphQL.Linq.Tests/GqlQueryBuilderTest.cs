@@ -976,6 +976,35 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void FragmentForUnionUsageTest()
+        {
+            var queryBuilder = GetQueryBuilder(@"
+                type ModuleA {
+                    name: String!
+                    a: Int!
+                }
+                type ModuleB {
+                    name: String!
+                    b: Int!
+                }
+                union Module = ModuleA | ModuleB
+                type Query {
+                    modules: [Module]
+                }",
+                cfg => cfg.Types.For("Module").ResolveType = _ => throw new NotSupportedException());
+
+            var query = new Module[0].AsQueryable()
+                .UsingFragment((IQueryable<Module> fullModule) => fullModule);
+
+            var queryText = queryBuilder.BuildQuery(query.Expression, new VariablesResolver(), out _);
+            queryText = PostProcessQuery(queryText);
+
+            Assert.Equal(
+                "query { modules { ... fullModule } } fragment fullModule on Module { __typename ... on ModuleA { name a } ... on ModuleB { name b } }",
+                queryText);
+        }
+
+        [Fact]
         public void FragmentRecursiveUsageTest()
         {
             var queryBuilder = GetQueryBuilder(@"
