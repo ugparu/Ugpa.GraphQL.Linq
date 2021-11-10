@@ -58,13 +58,6 @@ namespace Ugpa.GraphQL.Linq.Utils
                         }
                         else
                         {
-                            if (objectContract.UnderlyingType.IsAbstract)
-                            {
-                                throw new InvalidOperationException(string.Format(
-                                    Resources.GqlMaterializer_UnableToCreateAbstractType,
-                                    objectContract.UnderlyingType));
-                            }
-
                             if (entityCache.GetEntity(objectToken, objectContract.UnderlyingType, out var id) is not object value)
                             {
                                 if (objectContract.OverrideCreator is not null)
@@ -74,6 +67,12 @@ namespace Ugpa.GraphQL.Linq.Utils
                                 else if (objectContract.DefaultCreator is not null)
                                 {
                                     value = objectContract.DefaultCreator();
+                                }
+                                else if (objectContract.UnderlyingType.IsAbstract)
+                                {
+                                    throw new InvalidOperationException(string.Format(
+                                        Resources.GqlMaterializer_UnableToCreateAbstractType,
+                                        objectContract.UnderlyingType));
                                 }
                                 else
                                 {

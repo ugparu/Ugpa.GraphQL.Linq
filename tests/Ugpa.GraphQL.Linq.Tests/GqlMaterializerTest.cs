@@ -200,6 +200,24 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void ReadingAbstractTypeWithCustomFactoryTest()
+        {
+            var materializer = CreateMaterializer("type IFoo { name: String! }");
+            var contractResolver = new Ugpa.Json.Serialization.FluentContext();
+
+            contractResolver.Configure<IFoo>(cfg => cfg.ConstructWith(() => new FooA()));
+
+            var serializer = JsonSerializer.Create(new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver
+            });
+
+            var json = @"{ ""name"": ""Foo 1"" }";
+            var f = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(IFoo), null, serializer);
+            Assert.IsType<FooA>(f);
+        }
+
+        [Fact]
         public void LoopedObjectCachingTest()
         {
             var materializer = CreateMaterializer(@"
@@ -232,6 +250,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         private GqlMaterializer CreateMaterializer(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             var schema = Schema.For(typeDefinitions, configure);
+            schema.Initialize();
             var mapper = new Mock<IGraphTypeMapper>();
             var types = new Dictionary<Type, IGraphType>();
             mapper
