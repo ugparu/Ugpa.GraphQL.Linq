@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using GraphQL.Types;
 using Moq;
 using Ugpa.GraphQL.Linq.Tests.Fixtures;
@@ -59,16 +60,59 @@ namespace Ugpa.GraphQL.Linq.Tests
                 Mock.Of<ISchemaSource>(_ => _.GetSchema() == schema));
 
             var templates = context.Get<DrawSchemaItemTemplate>().ToArray();
-            var schemas = context.Get<DrawSchema>().Include(s => s.Items.Include(i => i.Template)).ToArray();
+            var items = context.Get<DrawSchema>()
+                .Include(s => s.Items.Include(i => i.Template))
+                .ToArray()[0]
+                .Items
+                .ToArray();
 
-            Assert.Same(schemas[0].Items[0].Template, schemas[0].Items[1].Template);
-            Assert.Same(templates[0], schemas[0].Items[0].Template);
-            Assert.Same(templates[1], schemas[0].Items[2].Template);
+            Assert.Same(items[0].Template, items[1].Template);
+            Assert.Same(templates[0], items[0].Template);
+            Assert.Same(templates[1], items[2].Template);
+        }
+
+        [Fact]
+        public void CollectionRepopulatingTest()
+        {
+            var schema = Schema.For(@"
+                type DrawSchema {
+                    id: ID!
+                    items: [DrawSchemaItem]
+                }
+                type DrawSchemaItem {
+                    name: String!
+                }
+                type Query {
+                    schema: DrawSchema
+                }");
+
+            var root = new
+            {
+                schema = new
+                {
+                    id = 123,
+                    items = new[]
+                    {
+                        new { name = "i1" },
+                        new { name = "i2" }
+                    }
+                }
+            };
+
+            var context = new GqlContext(
+                () => clientFixture.CreateClientFor(schema, root),
+                Mock.Of<ISchemaSource>(_ => _.GetSchema() == schema));
+
+            var drawSchema = context.Get<DrawSchema>().Include(s => s.Items).ToArray()[0];
+            Assert.Equal(2, drawSchema.Items.Count());
+
+            context.Get<DrawSchema>().Include(s => s.Items).ToArray();
+            Assert.Equal(2, drawSchema.Items.Count());
         }
 
         private class DrawSchema
         {
-            public DrawSchemaItem[] Items { get; set; }
+            public IEnumerable<DrawSchemaItem> Items { get; } = new List<DrawSchemaItem>();
         }
 
         private class DrawSchemaItem

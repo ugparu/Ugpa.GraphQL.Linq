@@ -88,7 +88,7 @@ namespace Ugpa.GraphQL.Linq
         {
             var settings = new JsonSerializerSettings
             {
-                ContractResolver = fluentContext,
+                ContractResolver = new ListCleanupContractResolver(fluentContext),
                 SerializationBinder = fluentContext,
                 TypeNameHandling = TypeNameHandling.All,
                 Converters =
