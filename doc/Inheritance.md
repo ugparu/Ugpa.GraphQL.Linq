@@ -78,3 +78,5 @@ query {
   }
 }
 ```
+## Important notes
+* For correct work of inheritance model all type must be configured as discribed in [this](https://github.com/ugparu/Ugpa.GraphQL.Linq/blob/doc/doc/ConfiguringTypes.md#mapping-clr-type-on-graphql-type) section.
