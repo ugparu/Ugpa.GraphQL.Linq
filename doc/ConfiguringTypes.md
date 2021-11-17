@@ -20,7 +20,7 @@ configurator.Configure<Product>(cfg => ...);
 ### Mapping CLR type on GraphQL type
 Mapping CLR type on GraphQL type may be usefull in next situations:
 * CLR type name differs from GraphQL type name;
-* you are using inheritance and reading object of abstract type (in this case type name is defined in GraphQL response and must be mapped on CLR type).
+* you are using [inheritance](https://github.com/ugparu/Ugpa.GraphQL.Linq/blob/doc/doc/Inheritance.md#inheritance) and reading object of abstract type (in this case type name is defined in GraphQL response and must be mapped on CLR type).
 
 To map CLR type on GraphQL type you need to call `HasTypeName` method of `IGqlTypeConfigurator<T>` and specify GraphQL type for configured type.
 ```csharp
