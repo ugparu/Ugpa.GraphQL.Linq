@@ -19,7 +19,7 @@ To fetch data from this endpoint you need to use Where constraint like above
 ```csharp
 context.Get<Product>().Where(new { customer = "Customer Name" }).ToArray()
 ```
-GqlContext automatically will find field of type Product with customer parameter and generate query to fetch data from it.
+`GqlContext` automatically will find field of type `Product` with `customer` parameter and generate query to fetch data from it.
 Value "Customer Name" will be sent as query variable, and query will look like
 ```gql
 query($linq_param_0: String!) {
