@@ -15,7 +15,7 @@ type Query {
   customerProducts(customer: String!): [Product!]!
 }
 ```
-To fetch data from this endpoint you need to use Where constraint like above
+To fetch data from this endpoint you need to use `Where` constraint like above
 ```csharp
 context.Get<Product>().Where(new { customer = "Customer Name" }).ToArray()
 ```
