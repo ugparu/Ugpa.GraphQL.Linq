@@ -18,6 +18,6 @@ jobs:
     - uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x        
-    - run: dotnet restore .\Ugpa.Json.Serialization.sln
-    - run: dotnet build .\Ugpa.Json.Serialization.sln -c release --no-restore
-    - run: dotnet test .\Ugpa.Json.Serialization.sln -c release --no-build
+    - run: dotnet restore .\Ugpa.GraphQL.Linq.sln
+    - run: dotnet build .\Ugpa.GraphQL.Linq.sln -c release --no-restore
+    - run: dotnet test .\Ugpa.GraphQL.Linq.sln -c release --no-build
