@@ -29,7 +29,6 @@ query($linq_param_0: String!) {
 }
 ```
 ## Fetching nested members
-### Including data
 By default, when fetching data, only scalar fields are included in query. For example, assumes manufacturer is complex type
 ```gql
 type Manufacturer {
@@ -58,6 +57,7 @@ query {
   }
 }
 ```
+### Including data
 To fetch produtcs including it's manufacturer, you need to use `Include` extension method, like described above
 ```csharp
 context.Get<Product>()
@@ -114,4 +114,32 @@ query {
     }
   }
 }
+```
+### Selecting data
+If you need to fetch only nested fields, e.g., you need only manufacturer data from products, you can use `Select` extension method. For example
+```csharp
+context.Get<Product>().Select(_ => _.Manufacturer).ToArray()
+```
+In this case all fields of product will be inored except `manufacturer` field, and generated query wiil be
+```gql
+query {
+  products {
+    manufacturer {
+      address {
+        country
+        city
+      }
+    }
+  }
+}
+```
+Result of this request will be array of `Manufacturer`.
+
+Extension method `SelectMany` is also supported to fetch collections
+```csharp
+context.Get<Product>().Select(_ => _.Manufacturer).SelectMany(_ => _.AllProducts).ToArray()
+```
+or
+```csharp
+context.Get<Product>().SelectMany(_ => _.Manufacturer.AllProducts).ToArray()
 ```
