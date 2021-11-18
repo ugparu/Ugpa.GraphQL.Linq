@@ -28,7 +28,8 @@ query($linq_param_0: String!) {
   }
 }
 ```
-### Fetching nested members
+## Fetching nested members
+### Including data
 By default, when fetching data, only scalar fields are included in query. For example, assumes manufacturer is complex type
 ```gql
 type Manufacturer {
@@ -88,6 +89,24 @@ query {
     name
     manufacturer {
       name
+      address {
+        country
+        city
+      }
+    }
+  }
+}
+```
+To include only manufactirer address, you need to call `Include` only for `Manufacturer.Address`
+```csharp
+context.Get<Product>().Include(_ => _.Manufacturer.Address).ToArray()
+```
+In this case `Manufacturer` scalar field will be skipped, and generated query will be next
+```gql
+query {
+  products {
+    name
+    manufacturer {
       address {
         country
         city
