@@ -78,5 +78,49 @@ query {
   }
 }
 ```
+### Deep inheritance
+Deep inheritance in GraphQL is not supported. But you can use deep inheritance in C# model. For example, we have this GraphQL types
+```gql
+interface Product {
+  manufacturer: String!
+}
+type Smartphone implements Product {
+  manufacturer: String!
+  operationSystem: String!
+  eSim: Boolean!
+}
+type Tablet implements Product {
+  manufacturer: String!
+  operationSystem: String!
+  hasKeyboard: Boolean!
+}
+type EReader implements Product {
+  manufacturer: String!
+  inkType: String!
+}
+```
+As you can see, types `Smartphone` and `Tablet` can be generalized by common parent type, e.g. `SmartDevice`. So, in C# model you can define next types
+```csharp
+abstract class Product
+{
+    public string Manufacturer { get; set; }
+}
+class EReader: Product
+{
+    public string InkType { get; set; }
+}
+abstract class SmartDevice: Product
+{
+    public string OperationSystem { get; set; }
+}
+public class Smartphone: SmartDevice
+{
+    public bool ESim { get; set; }
+}
+public class Tablet: SmartDevice
+{
+    public bool HasKeyboard { get; set; }
+}
+```
 ### Important notes
 * For correct work of inheritance model all type must be configured as discribed in [this](https://github.com/ugparu/Ugpa.GraphQL.Linq/blob/doc/doc/ConfiguringTypes.md#mapping-clr-type-on-graphql-type) section.
