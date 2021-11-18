@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Ugpa.GraphQL.Linq</id>
-    <version>1.0.0-alpha1</version>
+    <version>1.0.0</version>
     <authors>pleshakovdv@ugpa.ru</authors>
     <owners>pleshakovdv@ugpa.ru</owners>
     <projectUrl>https://github.com/ugparu/Ugpa.GraphQL.Linq</projectUrl>
@@ -14,7 +14,7 @@
         <dependency id="GraphQL" version="4.5.0" />
         <dependency id="GraphQL.Client" version="3.2.3" />
         <dependency id="GraphQL.Client.Serializer.Newtonsoft" version="3.2.3" />
-        <dependency id="Ugpa.Json.Serialization" version="1.0.2" />
+        <dependency id="Ugpa.Json.Serialization" version="1.0.3" />
       </group>
     </dependencies>
   </metadata>
