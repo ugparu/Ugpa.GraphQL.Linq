@@ -29,6 +29,7 @@ class EReader: Product
     public string InkType { get; set; }
 }
 ```
+As you can see, GraphQL interface `Product` in C# model defined as abstract class.
 Now when you will fetch data from GraphQL endpoint, for each member of type `Product` field `__typename` will be included automatically. For example this code
 ```csharp
 context.Get<Product>().ToArray();
