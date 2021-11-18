@@ -1,0 +1,28 @@
+name: build, test and publish
+
+on:
+  release:
+    types:
+    - released
+
+jobs:
+  build_test_publish:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: master
+    - uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    - uses: nuget/setup-nuget@v1
+      with:
+        nuget-api-key: ${{ secrets.NUGET_ORG_API_KEY }}
+        nuget-version: '5.x'
+    - run: dotnet restore .\Ugpa.GraphQL.Linq.sln
+    - run: dotnet build .\Ugpa.GraphQL.Linq.sln -c release --no-restore
+    - run: dotnet test .\Ugpa.GraphQL.Linq.sln -c release --no-build
+    - run: nuget pack .\src\Ugpa.GraphQL.Linq.nuspec -properties Configuration=Release
+    - run: nuget push Ugpa.GraphQL.Linq.*.nupkg -src https://api.nuget.org/v3/index.json
