@@ -28,3 +28,71 @@ query($linq_param_0: String!) {
   }
 }
 ```
+### Fetching nested members
+By default, when fetching data, only scalar fields are included in query. For example, assumes manufacturer is complex type
+```gql
+type Manufacturer {
+  name: String!
+  location: Address!
+  products: [Product!]!
+}
+type Address {
+  country: String!
+  city: String!
+}
+type Product {
+  name: String!
+  manufacturer: Manufacturer!
+}
+```
+When you will fetch `Product` by this way
+```csharp
+context.Get<Product>().ToArray()
+```
+only it's `name` field will be included and generated query will be like this
+```gql
+query {
+  products {
+    name
+  }
+}
+```
+To fetch produtcs including it's manufacturer, you need to use `Include` extension method, like described above
+```csharp
+context.Get<Product>()
+    .Include(_ => _.Manufacturer)
+    .ToArray()
+```
+In this case, all scalar fields of `Product` will be included in query, `manufacturer` field and all scalar fields of `Manufacturer`. Generated query text will be next
+```gql
+query {
+  products {
+    name
+    manufacturer {
+      name
+    }
+  }
+}
+```
+To include manufacturer and it's address, you need to call `Include` twice
+```csharp
+context.Get<Product>()
+    .Include(_ => _.Manufacturer)
+    .Include(_ => _.Manufacturer.Address)
+    .ToArray()
+```
+Generated query will be next
+```gql
+query {
+  products {
+    name
+    manufacturer {
+      name
+      address {
+        country
+        city
+      }
+    }
+  }
+}
+```
