@@ -61,7 +61,16 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Не удалось сопоставить тип данных для GraphQL типа &quot;{0}&quot;..
+        ///   Looks up a localized string similar to Type &quot;{0}&quot; is not subtype of &quot;{1}&quot;..
+        /// </summary>
+        internal static string GqlMaterializer_TypeIsNotAssignable {
+            get {
+                return ResourceManager.GetString("GqlMaterializer_TypeIsNotAssignable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Can`&apos;t bind GraphQL type &quot;{0}&quot; to data type..
         /// </summary>
         internal static string GqlMaterializer_UnableBindToType {
             get {
@@ -70,16 +79,61 @@ namespace Ugpa.GraphQL.Linq.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Поле &quot;{0}&quot; не является полем составного типа..
+        ///   Looks up a localized string similar to Unable to create an instance of abstract type &quot;{0}&quot;..
         /// </summary>
-        internal static string GqlQueryBuilder_FieldTypeIsNotComplexType {
+        internal static string GqlMaterializer_UnableToCreateAbstractType {
             get {
-                return ResourceManager.GetString("GqlQueryBuilder_FieldTypeIsNotComplexType", resourceCulture);
+                return ResourceManager.GetString("GqlMaterializer_UnableToCreateAbstractType", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Тип &quot;{0}&quot; отсутствует в схеме..
+        ///   Looks up a localized string similar to Unable to read value &quot;{0}&quot; as object of type &quot;{1}&quot;..
+        /// </summary>
+        internal static string GqlMaterializer_UnableToReadValueAsObject {
+            get {
+                return ResourceManager.GetString("GqlMaterializer_UnableToReadValueAsObject", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Field &quot;{0}&quot; is not complex or union type field..
+        /// </summary>
+        internal static string GqlQueryBuilder_FieldTypeIsNotComplexOrUnionType {
+            get {
+                return ResourceManager.GetString("GqlQueryBuilder_FieldTypeIsNotComplexOrUnionType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Member &quot;{0}&quot; of data type &quot;{1}&quot; is missing in or not mapped for GraphQL type &quot;{2}&quot;..
+        /// </summary>
+        internal static string GqlQueryBuilder_MemberIsMissingOrNotMapped {
+            get {
+                return ResourceManager.GetString("GqlQueryBuilder_MemberIsMissingOrNotMapped", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to GraphQL type &quot;{0}&quot; is not an abstract type and can not has any subtypes..
+        /// </summary>
+        internal static string GqlQueryBuilder_NotAbstractType {
+            get {
+                return ResourceManager.GetString("GqlQueryBuilder_NotAbstractType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to GraphQL type &quot;{0}&quot; is not posible subtype of &quot;{1}&quot;..
+        /// </summary>
+        internal static string GqlQueryBuilder_NotPosibleDerivedType {
+            get {
+                return ResourceManager.GetString("GqlQueryBuilder_NotPosibleDerivedType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Assumed GraphQL type &quot;{0}&quot; for type &quot;{1}&quot; is not defined in schema..
         /// </summary>
         internal static string GraphTypeMapper_TypeNotDefined {
             get {

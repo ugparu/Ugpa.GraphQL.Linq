@@ -30,19 +30,21 @@ namespace Ugpa.GraphQL.Linq.Utils
             }
         }
 
-        public object GetEntity(JObject tokent, Type objectType, out string id)
+        public object? GetEntity(JObject tokent, Type objectType, out string? id)
         {
             var gType = (IComplexGraphType)graphTypeMapper.GetGraphType(objectType) ?? throw new InvalidOperationException();
 
             var idFields = tokent.Properties()
                 .Join(gType.Fields, _ => _.Name, _ => _.Name, (p, f) => new { p, f })
-                .Where(_ => _.f.ResolvedType is IdGraphType)
+                .Where(_ =>
+                    _.f.ResolvedType is IdGraphType ||
+                    _.f.ResolvedType is NonNullGraphType nonNull && nonNull.ResolvedType is IdGraphType)
                 .ToArray();
 
             id = idFields.Length switch
             {
                 0 => null,
-                1 => (string)((JValue)idFields[0].p.Value).Value,
+                1 => (string?)((JValue)idFields[0].p.Value).Value,
                 _ => throw new NotImplementedException()
             };
 

@@ -7,6 +7,16 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ugpa.GraphQL.Linq", "src\Ug
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ugpa.GraphQL.Linq.Tests", "tests\Ugpa.GraphQL.Linq.Tests\Ugpa.GraphQL.Linq.Tests.csproj", "{8C849AE0-6B32-4062-BC83-08B9B3283074}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Miscellaneous", "Miscellaneous", "{75301BCB-5EE7-455F-990B-D695B41B501A}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		src\Directory.Build.props = src\Directory.Build.props
+		stylecop.json = stylecop.json
+		src\Ugpa.GraphQL.Linq.nuspec = src\Ugpa.GraphQL.Linq.nuspec
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{17465D21-8CEA-4CF8-8A6F-F3589426755B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +34,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8C849AE0-6B32-4062-BC83-08B9B3283074} = {17465D21-8CEA-4CF8-8A6F-F3589426755B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CB90C17F-E561-4BEF-AEF9-5D6B619961E0}

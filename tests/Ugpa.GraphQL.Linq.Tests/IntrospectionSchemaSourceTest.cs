@@ -118,6 +118,35 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void UnionResolveTest()
+        {
+            var client = clientFixture.CreateClientFor(@"
+                type Foo {
+                    name: String!
+                }
+                type Bar {
+                    name: String!
+                }
+                union FooBar = Foo | Bar
+                type Query {
+                    fooBar: [FooBar]
+                }",
+                configure: _ => _.Types.For("FooBar").ResolveType = obj => throw new NotImplementedException());
+
+            var source = new IntrospectionSchemaSource(client);
+            var schema = source.GetSchema();
+
+            var fooBar = Assert.IsAssignableFrom<UnionGraphType>(schema.AllTypes.First(_ => _.Name == "FooBar"));
+            Assert.Equal(2, fooBar.PossibleTypes.Count);
+
+            var fooType = Assert.IsAssignableFrom<ObjectGraphType>(schema.AllTypes.First(_ => _.Name == "Foo"));
+            var barType = Assert.IsAssignableFrom<ObjectGraphType>(schema.AllTypes.First(_ => _.Name == "Bar"));
+
+            Assert.Single(fooBar.PossibleTypes, _ => _ == fooType);
+            Assert.Single(fooBar.PossibleTypes, _ => _ == barType);
+        }
+
+        [Fact]
         public void InputObjectResolveTest()
         {
             var client = clientFixture.CreateClientFor(@"

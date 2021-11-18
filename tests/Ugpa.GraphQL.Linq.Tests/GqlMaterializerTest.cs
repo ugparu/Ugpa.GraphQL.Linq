@@ -21,6 +21,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         [InlineData(typeof(short), false)]
         [InlineData(typeof(ushort), false)]
         [InlineData(typeof(int), false)]
+        [InlineData(typeof(int?), false)]
         [InlineData(typeof(uint), false)]
         [InlineData(typeof(long), false)]
         [InlineData(typeof(ulong), false)]
@@ -135,6 +136,16 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
+        public void ReadNullValueTest()
+        {
+            var materializer = CreateMaterializer();
+            var serializer = JsonSerializer.Create();
+            var reader = new JsonTextReader(new StringReader(@"null"));
+            var obj = materializer.ReadJson(reader, typeof(object), null, serializer);
+            Assert.Null(obj);
+        }
+
+        [Fact]
         public void FailOnExistingObjectInheritanceViolationTest()
         {
             var materializer = CreateMaterializer();
@@ -163,7 +174,7 @@ namespace Ugpa.GraphQL.Linq.Tests
         }
 
         [Fact]
-        public void ValuesAreCachedTest()
+        public void ValuesWithIdAreCachedTest()
         {
             var materializer = CreateMaterializer("type Object { id: ID }");
 
@@ -175,12 +186,71 @@ namespace Ugpa.GraphQL.Linq.Tests
             Assert.Same(o1, o2);
         }
 
+        [Fact]
+        public void ValuesWithNonNullIdAreCachedTest()
+        {
+            var materializer = CreateMaterializer("type Object { id: ID! }");
+
+            var serializer = JsonSerializer.Create();
+
+            var json = @"{ ""id"": ""cachedObject1"" }";
+            var o1 = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(object), null, serializer);
+            var o2 = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(object), null, serializer);
+            Assert.Same(o1, o2);
+        }
+
+        [Fact]
+        public void ReadingAbstractTypeWithCustomFactoryTest()
+        {
+            var materializer = CreateMaterializer("type IFoo { name: String! }");
+            var contractResolver = new Ugpa.Json.Serialization.FluentContext();
+
+            contractResolver.Configure<IFoo>(cfg => cfg.ConstructWith(() => new FooA()));
+
+            var serializer = JsonSerializer.Create(new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver
+            });
+
+            var json = @"{ ""name"": ""Foo 1"" }";
+            var f = materializer.ReadJson(new JsonTextReader(new StringReader(json)), typeof(IFoo), null, serializer);
+            Assert.IsType<FooA>(f);
+        }
+
+        [Fact]
+        public void LoopedObjectCachingTest()
+        {
+            var materializer = CreateMaterializer(@"
+                type LoopedObject {
+                    id: ID
+                    child: LoopedObject 
+                }");
+
+            var serializer = JsonSerializer.Create(
+                new JsonSerializerSettings
+                {
+                    Converters =
+                    {
+                        materializer
+                    }
+                });
+
+            var json = @"{ ""id"": ""1"", ""value"": 123, ""child"": { ""id"": ""1"" } }";
+            var obj = serializer.Deserialize<LoopedObject>(new JsonTextReader(new StringReader(json)));
+
+            Assert.NotNull(obj);
+            Assert.Equal(123, obj.Value);
+            Assert.NotNull(obj.Child);
+            Assert.Same(obj, obj.Child);
+        }
+
         private GqlMaterializer CreateMaterializer()
             => CreateMaterializer(string.Empty);
 
         private GqlMaterializer CreateMaterializer(string typeDefinitions, Action<SchemaBuilder> configure = null)
         {
             var schema = Schema.For(typeDefinitions, configure);
+            schema.Initialize();
             var mapper = new Mock<IGraphTypeMapper>();
             var types = new Dictionary<Type, IGraphType>();
             mapper
@@ -214,6 +284,13 @@ namespace Ugpa.GraphQL.Linq.Tests
 
         private sealed class Bar
         {
+        }
+
+        private sealed class LoopedObject
+        {
+            public int Value { get; set; }
+
+            public LoopedObject Child { get; set; }
         }
     }
 }
